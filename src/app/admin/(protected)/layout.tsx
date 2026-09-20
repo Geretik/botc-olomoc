@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { logoutAction } from "@/app/actions/admin";
 import { Button } from "@/components/ui";
@@ -7,14 +6,10 @@ import { isAdmin } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
+// The login page lives outside this route group, so it is never wrapped by
+// this layout and the redirect below cannot loop.
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const admin = await isAdmin();
-  const pathname = (await headers()).get("x-pathname");
-  // login page renders without the admin chrome
-  if (!admin) {
-    if (pathname !== "/admin/login") redirect("/admin/login");
-    return children;
-  }
+  if (!(await isAdmin())) redirect("/admin/login");
   return (
     <div className="flex flex-col gap-6">
       <nav className="flex flex-wrap items-center gap-3 border-b border-border pb-3 text-sm">
