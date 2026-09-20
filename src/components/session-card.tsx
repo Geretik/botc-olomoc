@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { SessionWithCount } from "@/lib/queries";
 import { formatDate, formatTime } from "@/lib/time";
+import { EditPencil } from "./edit-pencil";
 import { ScriptLinks } from "./script-links";
 import { Card } from "./ui";
 
@@ -8,13 +9,16 @@ export function freeSpots(s: SessionWithCount) {
   return Math.max(0, s.capacity - s.confirmedCount);
 }
 
-export function SessionCard({ session: s }: { session: SessionWithCount }) {
+export function SessionCard({ session: s, admin = false }: { session: SessionWithCount; admin?: boolean }) {
   const free = freeSpots(s);
   const full = free === 0;
   return (
     <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-semibold">{s.title}</h2>
+        <h2 className="flex items-center gap-2 text-lg font-semibold">
+          {s.title}
+          {admin && <EditPencil sessionId={s.id} />}
+        </h2>
         <p className="text-sm">
           <span>{formatDate(s.startsAt)}</span>,{" "}
           {formatTime(s.startsAt)}–{formatTime(s.endsAt)}

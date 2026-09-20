@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import { RegistrationForm } from "@/components/registration-form";
 import { freeSpots } from "@/components/session-card";
 import { Alert, Card } from "@/components/ui";
+import { EditPencil } from "@/components/edit-pencil";
 import { ScriptLinks } from "@/components/script-links";
+import { isAdmin } from "@/lib/admin-auth";
 import { getSessionWithCount, listConfirmedNicknames } from "@/lib/queries";
 import { formatDate, formatTime } from "@/lib/time";
 
@@ -17,9 +19,10 @@ export default async function SessionPage({
   const { id } = await params;
   const numId = Number(id);
   if (!Number.isInteger(numId)) notFound();
-  const [session, nicknames] = await Promise.all([
+  const [session, nicknames, admin] = await Promise.all([
     getSessionWithCount(numId),
     listConfirmedNicknames(numId),
+    isAdmin(),
   ]);
   if (!session) notFound();
 
@@ -32,7 +35,10 @@ export default async function SessionPage({
         ← Zpět na termíny
       </Link>
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{session.title}</h1>
+        <h1 className="flex items-center gap-3 text-3xl font-bold tracking-tight">
+          {session.title}
+          {admin && <EditPencil sessionId={session.id} />}
+        </h1>
         <p className="mt-2">
           <span>{formatDate(session.startsAt)}</span>,{" "}
           {formatTime(session.startsAt)}–{formatTime(session.endsAt)}
