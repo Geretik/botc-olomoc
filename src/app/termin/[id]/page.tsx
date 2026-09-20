@@ -35,7 +35,7 @@ export default async function SessionPage({
         <h1 className="text-3xl font-bold tracking-tight">{session.title}</h1>
         <p className="mt-2">
           <span>{formatDate(session.startsAt)}</span>,{" "}
-          {formatTime(session.startsAt)} – {formatTime(session.endsAt)}
+          {formatTime(session.startsAt)}–{formatTime(session.endsAt)}
         </p>
         <p className="text-muted">{session.place}</p>
         {session.note && (

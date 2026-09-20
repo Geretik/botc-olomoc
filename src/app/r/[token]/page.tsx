@@ -37,7 +37,7 @@ export default async function EditRegistrationPage({
         <p className="mt-2 font-medium">{s.title}</p>
         <p>
           <span>{formatDate(s.startsAt)}</span>,{" "}
-          {formatTime(s.startsAt)} – {formatTime(s.endsAt)}
+          {formatTime(s.startsAt)}–{formatTime(s.endsAt)}
         </p>
         <p className="text-muted">{s.place}</p>
       </div>

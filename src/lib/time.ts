@@ -24,7 +24,7 @@ export function formatTime(d: Date) {
 }
 
 export function formatRange(start: Date, end: Date) {
-  return `${formatDate(start)}, ${formatTime(start)} – ${formatTime(end)}`;
+  return `${formatDate(start)}, ${formatTime(start)}–${formatTime(end)}`;
 }
 
 /** Offset of Europe/Prague from UTC at a given instant, in minutes. */

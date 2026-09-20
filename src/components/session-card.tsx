@@ -17,7 +17,7 @@ export function SessionCard({ session: s }: { session: SessionWithCount }) {
         <h2 className="text-lg font-semibold">{s.title}</h2>
         <p className="text-sm">
           <span>{formatDate(s.startsAt)}</span>,{" "}
-          {formatTime(s.startsAt)} – {formatTime(s.endsAt)}
+          {formatTime(s.startsAt)}–{formatTime(s.endsAt)}
         </p>
         <p className="text-sm text-muted">{s.place}</p>
         {s.note && <p className="text-sm text-muted whitespace-pre-line">{s.note}</p>}

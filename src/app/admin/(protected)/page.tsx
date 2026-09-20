@@ -15,7 +15,7 @@ export default async function AdminHomePage() {
         <div>
           <p className="font-semibold">{s.title}</p>
           <p className="text-sm text-muted">
-            <span>{formatDate(s.startsAt)}</span>, {formatTime(s.startsAt)} – {formatTime(s.endsAt)} · {s.place}
+            <span>{formatDate(s.startsAt)}</span>, {formatTime(s.startsAt)}–{formatTime(s.endsAt)} · {s.place}
           </p>
         </div>
         <p className="text-sm font-medium">

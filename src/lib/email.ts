@@ -47,7 +47,7 @@ tvoje registrace na Blood on the Clocktower je potvrzená.
 Termín: ${session.title}
 Kdy: ${when}
 Kde: ${session.place}
-Tvůj příchod / odchod: ${arrival} – ${departure}
+Tvůj příchod / odchod: ${arrival}–${departure}
 
 Registraci můžeš upravit nebo zrušit na tomto odkazu (nikomu ho neposílej):
 ${link}
@@ -60,7 +60,7 @@ Těšíme se na tebe!`;
 <tr><td><strong>Termín</strong></td><td>${escapeHtml(session.title)}</td></tr>
 <tr><td><strong>Kdy</strong></td><td>${escapeHtml(when)}</td></tr>
 <tr><td><strong>Kde</strong></td><td>${escapeHtml(session.place)}</td></tr>
-<tr><td><strong>Příchod / odchod</strong></td><td>${arrival} – ${departure}</td></tr>
+<tr><td><strong>Příchod / odchod</strong></td><td>${arrival}–${departure}</td></tr>
 </table>
 <p>Registraci můžeš <a href="${link}">upravit nebo zrušit zde</a>. Odkaz je jen pro tebe, nikomu ho neposílej.</p>
 <p>Těšíme se na tebe!</p>`;
