@@ -20,6 +20,7 @@ export function RegistrationForm({
 
   if (state.ok) {
     return (
+      <div className="flex flex-col gap-3">
       <Alert kind="success">
         {state.outcome === "already_registered" ? (
           <>
@@ -33,6 +34,13 @@ export function RegistrationForm({
           </>
         )}
       </Alert>
+      {state.emailFailed && (
+        <Alert kind="error">
+          Registrace je uložená, ale potvrzovací e-mail se nepodařilo odeslat.
+          Napiš prosím organizátorům, pošlou ti odkaz na úpravu ručně.
+        </Alert>
+      )}
+      </div>
     );
   }
 

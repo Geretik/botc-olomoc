@@ -21,7 +21,18 @@ import {
 
 export type RegisterResult = FormState & {
   outcome?: "created" | "already_registered";
+  emailFailed?: boolean;
 };
+
+async function trySend(fn: () => Promise<void>) {
+  try {
+    await fn();
+    return false;
+  } catch (e) {
+    console.error("E-mail se nepodařilo odeslat", e);
+    return true;
+  }
+}
 
 export async function registerAction(
   sessionId: number,
@@ -111,12 +122,18 @@ export async function registerAction(
         return { error: "Tento termín už proběhl." };
       case "full":
         return { error: "Termín je bohužel už plný." };
-      case "already":
-        await sendExistingRegistrationEmail(result.registration, result.session);
-        return { ok: true, outcome: "already_registered" };
-      case "created":
-        await sendConfirmationEmail(result.registration, result.session);
-        return { ok: true, outcome: "created" };
+      case "already": {
+        const emailFailed = await trySend(() =>
+          sendExistingRegistrationEmail(result.registration, result.session),
+        );
+        return { ok: true, outcome: "already_registered", emailFailed };
+      }
+      case "created": {
+        const emailFailed = await trySend(() =>
+          sendConfirmationEmail(result.registration, result.session),
+        );
+        return { ok: true, outcome: "created", emailFailed };
+      }
     }
   } catch (e) {
     console.error(e);
