@@ -22,6 +22,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Link href="/" className="font-semibold tracking-tight text-lg">
               🕰️ Blood on the Clocktower <span className="text-muted">Olomouc</span>
             </Link>
+            <nav className="flex gap-4 text-sm">
+              <Link href="/" className="hover:underline">Termíny</Link>
+              <Link href="/o-hre" className="hover:underline">O hře</Link>
+            </nav>
           </div>
         </header>
         <main className="mx-auto w-full max-w-3xl px-4 py-8 flex-1">
