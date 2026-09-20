@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { EditRegistrationForm } from "@/components/edit-registration-form";
 import { Alert, Card } from "@/components/ui";
+import { getDict } from "@/i18n/server";
 import { getRegistrationByToken } from "@/lib/queries";
 import { formatDate, formatTime } from "@/lib/time";
 
@@ -12,16 +13,14 @@ export default async function EditRegistrationPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const reg = await getRegistrationByToken(token);
+  const [reg, { locale, t }] = await Promise.all([getRegistrationByToken(token), getDict()]);
 
   if (!reg) {
     return (
       <div className="flex flex-col gap-4">
-        <h1 className="text-2xl font-bold">Registrace nenalezena</h1>
-        <Alert kind="error">
-          Tento odkaz je neplatný. Zkontroluj, zda jsi ho zkopíroval/a celý.
-        </Alert>
-        <Link href="/" className="text-sm hover:underline">← Zpět na termíny</Link>
+        <h1 className="text-2xl font-bold">{t.edit.notFoundTitle}</h1>
+        <Alert kind="error">{t.edit.notFoundBody}</Alert>
+        <Link href="/" className="text-sm hover:underline">{t.session.back}</Link>
       </div>
     );
   }
@@ -31,29 +30,29 @@ export default async function EditRegistrationPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <Link href="/" className="text-sm text-muted hover:underline">← Zpět na termíny</Link>
+      <Link href="/" className="text-sm text-muted hover:underline">{t.session.back}</Link>
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Tvoje registrace</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t.edit.title}</h1>
         <p className="mt-2 font-medium">{s.title}</p>
         <p>
-          <span>{formatDate(s.startsAt)}</span>,{" "}
-          {formatTime(s.startsAt)}–{formatTime(s.endsAt)}
+          {formatDate(s.startsAt, locale)}, {formatTime(s.startsAt, locale)}–{formatTime(s.endsAt, locale)}
         </p>
         <p className="text-muted">{s.place}</p>
       </div>
       <Card>
         {reg.status === "cancelled" ? (
           <Alert kind="info">
-            Tato registrace je zrušená. Pokud chceš přijít,{" "}
-            <Link href={`/termin/${s.id}`} className="underline">registruj se znovu</Link>.
+            {t.edit.cancelledInfo}
+            <Link href={`/termin/${s.id}`} className="underline">{t.edit.registerAgain}</Link>.
           </Alert>
         ) : past ? (
-          <Alert kind="info">Tento termín už proběhl.</Alert>
+          <Alert kind="info">{t.session.past}</Alert>
         ) : (
           <EditRegistrationForm
             registration={reg}
-            defaultArrival={formatTime(s.startsAt)}
-            defaultDeparture={formatTime(s.endsAt)}
+            defaultArrival={formatTime(s.startsAt, locale)}
+            defaultDeparture={formatTime(s.endsAt, locale)}
+            t={t.form}
           />
         )}
       </Card>

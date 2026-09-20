@@ -44,6 +44,12 @@ export const registrations = pgTable(
     status: text("status", { enum: ["confirmed", "cancelled"] })
       .notNull()
       .default("confirmed"),
+    /** UI language the player used; e-mails are sent in it */
+    locale: text("locale", { enum: ["cs", "en"] }).notNull().default("cs"),
+    /** Set once the confirmation e-mail for the current (re)activation was sent – never send it twice */
+    confirmationSentAt: timestamp("confirmation_sent_at", { withTimezone: true }),
+    /** Last time any e-mail went to this registration – throttles "already registered" re-sends */
+    lastEmailAt: timestamp("last_email_at", { withTimezone: true }),
     editToken: text("edit_token").notNull().unique(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

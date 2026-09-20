@@ -6,6 +6,7 @@ import {
   updateRegistrationAction,
 } from "@/app/actions/registration";
 import type { Registration } from "@/db/schema";
+import type { Dict } from "@/i18n/dictionaries";
 import type { FormState } from "@/lib/validation";
 import { Alert, Button, Field, inputClass } from "./ui";
 
@@ -13,10 +14,12 @@ export function EditRegistrationForm({
   registration: r,
   defaultArrival,
   defaultDeparture,
+  t,
 }: {
   registration: Registration;
   defaultArrival: string;
   defaultDeparture: string;
+  t: Dict["form"];
 }) {
   const [state, action, pending] = useActionState<FormState, FormData>(
     updateRegistrationAction.bind(null, r.editToken),
@@ -26,7 +29,7 @@ export function EditRegistrationForm({
   const [cancelling, setCancelling] = useState(false);
 
   async function onCancel() {
-    if (!confirm("Opravdu chceš registraci zrušit?")) return;
+    if (!confirm(t.cancelConfirm)) return;
     setCancelling(true);
     const res = await cancelRegistrationAction(r.editToken);
     setCancelState(res);
@@ -34,11 +37,7 @@ export function EditRegistrationForm({
   }
 
   if (cancelState?.ok) {
-    return (
-      <Alert kind="success">
-        Registrace byla zrušena. Pokud si to rozmyslíš, můžeš se registrovat znovu.
-      </Alert>
-    );
+    return <Alert kind="success">{t.cancelled}</Alert>;
   }
 
   const fe = state.fieldErrors ?? {};
@@ -47,36 +46,36 @@ export function EditRegistrationForm({
     <div className="flex flex-col gap-6">
       <form action={action} className="flex flex-col gap-4">
         {state.error && <Alert kind="error">{state.error}</Alert>}
-        {state.ok && <Alert kind="success">Změny uloženy.</Alert>}
+        {state.ok && <Alert kind="success">{t.saved}</Alert>}
         {cancelState?.error && <Alert kind="error">{cancelState.error}</Alert>}
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Jméno" name="firstName" errors={fe.firstName}>
+          <Field label={t.firstName} name="firstName" errors={fe.firstName}>
             <input id="firstName" name="firstName" required defaultValue={r.firstName} className={inputClass} />
           </Field>
-          <Field label="Příjmení" name="lastName" errors={fe.lastName}>
+          <Field label={t.lastName} name="lastName" errors={fe.lastName}>
             <input id="lastName" name="lastName" required defaultValue={r.lastName} className={inputClass} />
           </Field>
         </div>
-        <Field label="Přezdívka" name="nickname" errors={fe.nickname} hint="Bude zobrazena na webu v seznamu přihlášených.">
+        <Field label={t.nickname} name="nickname" errors={fe.nickname} hint={t.nicknameHintEdit}>
           <input id="nickname" name="nickname" required defaultValue={r.nickname} className={inputClass} />
         </Field>
-        <Field label="E-mail" name="email">
+        <Field label={t.email} name="email">
           <input id="email" value={r.email} disabled className={`${inputClass} opacity-60`} />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Příchod" name="arrivalTime" errors={fe.arrivalTime} hint={`Prázdné = ${defaultArrival}`}>
+          <Field label={t.arrival} name="arrivalTime" errors={fe.arrivalTime} hint={t.emptyMeansPrefix + defaultArrival}>
             <input id="arrivalTime" name="arrivalTime" type="time" defaultValue={r.arrivalTime ?? ""} className={inputClass} />
           </Field>
-          <Field label="Odchod" name="departureTime" errors={fe.departureTime} hint={`Prázdné = ${defaultDeparture}`}>
+          <Field label={t.departure} name="departureTime" errors={fe.departureTime} hint={t.emptyMeansPrefix + defaultDeparture}>
             <input id="departureTime" name="departureTime" type="time" defaultValue={r.departureTime ?? ""} className={inputClass} />
           </Field>
         </div>
         <div className="flex flex-wrap gap-3">
           <Button type="submit" disabled={pending}>
-            {pending ? "Ukládám…" : "Uložit změny"}
+            {pending ? t.saving : t.save}
           </Button>
           <Button type="button" variant="danger" onClick={onCancel} disabled={cancelling}>
-            {cancelling ? "Ruším…" : "Zrušit registraci"}
+            {cancelling ? t.cancelling : t.cancel}
           </Button>
         </div>
       </form>

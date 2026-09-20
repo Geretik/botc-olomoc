@@ -1,26 +1,28 @@
 import { z } from "zod";
+import type { Dict } from "@/i18n/dictionaries";
 import { TIME_RE } from "./time";
 
-const optionalTime = z
-  .string()
-  .trim()
-  .transform((v) => (v === "" ? null : v))
-  .pipe(z.string().regex(TIME_RE, "Čas zadej ve formátu HH:MM").nullable());
+export function registrationSchema(t: Dict["errors"]) {
+  const optionalTime = z
+    .string()
+    .trim()
+    .transform((v) => (v === "" ? null : v))
+    .pipe(z.string().regex(TIME_RE, t.timeFormat).nullable());
 
-export const registrationSchema = z.object({
-  firstName: z.string().trim().min(1, "Vyplň jméno").max(100),
-  lastName: z.string().trim().min(1, "Vyplň příjmení").max(100),
-  nickname: z.string().trim().min(1, "Vyplň přezdívku").max(100),
-  email: z.string().trim().toLowerCase().email("Zadej platný e-mail").max(200),
-  arrivalTime: optionalTime,
-  departureTime: optionalTime,
-  website: z.string().max(0).optional(), // honeypot
-});
+  return z.object({
+    firstName: z.string().trim().min(1, t.fillFirstName).max(100),
+    lastName: z.string().trim().min(1, t.fillLastName).max(100),
+    nickname: z.string().trim().min(1, t.fillNickname).max(100),
+    email: z.string().trim().toLowerCase().email(t.invalidEmail).max(200),
+    arrivalTime: optionalTime,
+    departureTime: optionalTime,
+    website: z.string().max(0).optional(), // honeypot
+  });
+}
 
-export const registrationEditSchema = registrationSchema.omit({
-  email: true,
-  website: true,
-});
+export function registrationEditSchema(t: Dict["errors"]) {
+  return registrationSchema(t).omit({ email: true, website: true });
+}
 
 export const sessionSchema = z.object({
   title: z.string().trim().min(1, "Vyplň název").max(200),

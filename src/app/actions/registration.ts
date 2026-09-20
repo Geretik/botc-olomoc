@@ -14,14 +14,20 @@ import {
   registrationSchema,
   type FormState,
 } from "@/lib/validation";
+import { getDict } from "@/i18n/server";
 
 // Note: no revalidatePath() here on purpose. All public pages are force-dynamic,
 // and revalidating would re-render the current page and replace the success
 // message with the server state (e.g. "Termín je plný" for the last spot).
 
+/** Minimum gap between two "you're already registered" e-mails for one registration. */
+const RESEND_COOLDOWN_MS = 10 * 60 * 1000;
+
 export type RegisterResult = FormState & {
   outcome?: "created" | "already_registered";
   emailFailed?: boolean;
+  /** true when the "already registered" mail was NOT re-sent because one went out recently */
+  emailThrottled?: boolean;
 };
 
 async function trySend(fn: () => Promise<void>) {
@@ -29,7 +35,7 @@ async function trySend(fn: () => Promise<void>) {
     await fn();
     return false;
   } catch (e) {
-    console.error("E-mail se nepodařilo odeslat", e);
+    console.error("E-mail could not be sent", e);
     return true;
   }
 }
@@ -39,11 +45,12 @@ export async function registerAction(
   _prev: RegisterResult,
   formData: FormData,
 ): Promise<RegisterResult> {
-  const parsed = registrationSchema.safeParse(
+  const { locale, t } = await getDict();
+  const parsed = registrationSchema(t.errors).safeParse(
     Object.fromEntries(formData.entries()),
   );
   if (!parsed.success) {
-    return { error: "Zkontroluj prosím formulář.", fieldErrors: fieldErrorsOf(parsed.error) };
+    return { error: t.errors.checkForm, fieldErrors: fieldErrorsOf(parsed.error) };
   }
   const data = parsed.data;
   if (data.website) {
@@ -69,6 +76,16 @@ export async function registerAction(
       });
 
       if (existing && existing.status === "confirmed") {
+        // Throttle re-sends: claim the send slot inside the locked transaction so two
+        // concurrent duplicate submissions can never both send.
+        const recent =
+          existing.lastEmailAt !== null &&
+          Date.now() - existing.lastEmailAt.getTime() < RESEND_COOLDOWN_MS;
+        if (recent) return { kind: "already_throttled" as const };
+        await tx
+          .update(registrations)
+          .set({ lastEmailAt: new Date() })
+          .where(eq(registrations.id, existing.id));
         return { kind: "already" as const, session, registration: existing };
       }
 
@@ -83,6 +100,7 @@ export async function registerAction(
         );
       if (count >= session.capacity) return { kind: "full" as const };
 
+      const now = new Date();
       const values = {
         firstName: data.firstName,
         lastName: data.lastName,
@@ -90,7 +108,11 @@ export async function registerAction(
         arrivalTime: data.arrivalTime,
         departureTime: data.departureTime,
         status: "confirmed" as const,
-        updatedAt: new Date(),
+        locale,
+        // claim the confirmation send right away – exactly one confirmation per (re)activation
+        confirmationSentAt: now,
+        lastEmailAt: now,
+        updatedAt: now,
       };
 
       let registration;
@@ -117,11 +139,13 @@ export async function registerAction(
 
     switch (result.kind) {
       case "not_found":
-        return { error: "Termín neexistuje." };
+        return { error: t.errors.notFound };
       case "past":
-        return { error: "Tento termín už proběhl." };
+        return { error: t.errors.past };
       case "full":
-        return { error: "Termín je bohužel už plný." };
+        return { error: t.errors.full };
+      case "already_throttled":
+        return { ok: true, outcome: "already_registered", emailThrottled: true };
       case "already": {
         const emailFailed = await trySend(() =>
           sendExistingRegistrationEmail(result.registration, result.session),
@@ -132,12 +156,19 @@ export async function registerAction(
         const emailFailed = await trySend(() =>
           sendConfirmationEmail(result.registration, result.session),
         );
+        if (emailFailed) {
+          // release the claim so an organiser could re-trigger it later
+          await db
+            .update(registrations)
+            .set({ confirmationSentAt: null })
+            .where(eq(registrations.id, result.registration.id));
+        }
         return { ok: true, outcome: "created", emailFailed };
       }
     }
   } catch (e) {
     console.error(e);
-    return { error: "Něco se pokazilo. Zkus to prosím znovu." };
+    return { error: t.errors.generic };
   }
 }
 
@@ -146,12 +177,14 @@ export async function updateRegistrationAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const parsed = registrationEditSchema.safeParse(
+  const { t } = await getDict();
+  const parsed = registrationEditSchema(t.errors).safeParse(
     Object.fromEntries(formData.entries()),
   );
   if (!parsed.success) {
-    return { error: "Zkontroluj prosím formulář.", fieldErrors: fieldErrorsOf(parsed.error) };
+    return { error: t.errors.checkForm, fieldErrors: fieldErrorsOf(parsed.error) };
   }
+  // Editing never sends e-mail.
   const [updated] = await db
     .update(registrations)
     .set({ ...parsed.data, updatedAt: new Date() })
@@ -162,16 +195,18 @@ export async function updateRegistrationAction(
       ),
     )
     .returning({ id: registrations.id });
-  if (!updated) return { error: "Registrace nebyla nalezena nebo je zrušená." };
+  if (!updated) return { error: t.errors.regNotFound };
   return { ok: true };
 }
 
 export async function cancelRegistrationAction(token: string): Promise<FormState> {
+  const { t } = await getDict();
+  // Cancelling never sends e-mail.
   const [updated] = await db
     .update(registrations)
     .set({ status: "cancelled", updatedAt: new Date() })
     .where(eq(registrations.editToken, token))
     .returning({ sessionId: registrations.sessionId });
-  if (!updated) return { error: "Registrace nebyla nalezena." };
+  if (!updated) return { error: t.errors.regNotFound };
   return { ok: true };
 }

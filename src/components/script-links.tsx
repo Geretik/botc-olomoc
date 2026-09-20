@@ -1,10 +1,18 @@
 import type { ScriptLink } from "@/db/schema";
 
-export function ScriptLinks({ scripts, className = "" }: { scripts: ScriptLink[]; className?: string }) {
+export function ScriptLinks({
+  scripts,
+  label,
+  className = "",
+}: {
+  scripts: ScriptLink[];
+  label: string;
+  className?: string;
+}) {
   if (!scripts.length) return null;
   return (
     <p className={`text-sm ${className}`}>
-      <span className="text-muted">{scripts.length === 1 ? "Script: " : "Scripty: "}</span>
+      <span className="text-muted">{label}</span>
       {scripts.map((s, i) => (
         <span key={s.url}>
           {i > 0 && <span className="text-muted">, </span>}

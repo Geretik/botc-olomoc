@@ -13,6 +13,8 @@ registraci upravit nebo zrušit.
 
 ## Funkce
 
+- Dvojjazyčné rozhraní **česky / English** (přepínač v hlavičce, volba se ukládá do cookie, e-maily chodí v jazyce hráče)
+
 - `/` – seznam nadcházejících termínů s počtem volných míst
 - `/termin/[id]` – detail termínu a registrační formulář (jméno, příjmení, přezdívka, e-mail, volitelný příchod/odchod)
 - `/r/[token]` – úprava / zrušení registrace přes odkaz z e-mailu
@@ -23,6 +25,7 @@ Pravidla:
 - Kapacita se kontroluje v transakci se zámkem řádku termínu, takže se nedá překročit ani při souběžných registracích.
 - Zrušená registrace uvolní místo. Při nové registraci stejným e-mailem se obnoví s novým tokenem.
 - Formulář obsahuje honeypot pole proti botům.
+- E-maily se nikdy neposílají dvakrát: potvrzení jde jednou na každou (re)aktivaci registrace, opakované "už jsi registrovaný" nejdřív po 10 minutách. Úprava ani zrušení registrace e-mail neposílají.
 - Časy se zobrazují i zadávají v časové zóně `Europe/Prague`.
 
 ## Lokální vývoj
@@ -59,9 +62,29 @@ Admin: `/admin/login`, heslo z `ADMIN_PASSWORD`.
    (nebo použij `npm run db:generate` + `npm run db:migrate` pro migrace).
 6. Deploy. Pak v `/admin` vypiš první termín.
 
+## Testy
+
+End-to-end testy (Playwright) běží proti produkčnímu buildu a **embedded Postgresu (PGlite)**, takže nepotřebují žádnou externí databázi ani účty. E-maily se v testech jen logují.
+
+```bash
+npx playwright install chromium   # jednorázově
+npm test                          # build + e2e
+npm run test:e2e                  # jen e2e (po předchozím buildu)
+```
+
+## CI a nasazení
+
+Workflow `.github/workflows/ci.yml`:
+
+1. **test** – na každý push i PR: lint, typecheck, build, e2e testy. Při selhání je report Playwrightu k dispozici jako artifact.
+2. **deploy** – jen na `main` a jen po úspěšných testech: aplikuje schéma DB (`drizzle-kit push`) a nasadí produkci přes Vercel CLI.
+
+Potřebné GitHub secrets: `VERCEL_TOKEN` (vytvoř na vercel.com/account/tokens), `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` (z `.vercel/project.json`), `DATABASE_URL` (nepoolované připojení pro migrace).
+
 ## Skripty
 
 - `npm run dev` / `build` / `start` / `lint`
+- `npm test` – build a e2e testy, `npm run test:e2e` – jen testy
 - `npm run db:push` – synchronizuje schéma do DB (vhodné pro vývoj a malé projekty)
 - `npm run db:generate`, `npm run db:migrate` – SQL migrace
 - `npm run db:studio` – Drizzle Studio pro prohlížení dat

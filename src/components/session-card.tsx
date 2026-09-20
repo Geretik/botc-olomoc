@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Dict, Locale } from "@/i18n/dictionaries";
 import type { SessionWithCount } from "@/lib/queries";
 import { formatDate, formatTime } from "@/lib/time";
 import { EditPencil } from "./edit-pencil";
@@ -9,7 +10,17 @@ export function freeSpots(s: SessionWithCount) {
   return Math.max(0, s.capacity - s.confirmedCount);
 }
 
-export function SessionCard({ session: s, admin = false }: { session: SessionWithCount; admin?: boolean }) {
+export function SessionCard({
+  session: s,
+  admin = false,
+  locale,
+  t,
+}: {
+  session: SessionWithCount;
+  admin?: boolean;
+  locale: Locale;
+  t: Dict;
+}) {
   const free = freeSpots(s);
   const full = free === 0;
   return (
@@ -17,23 +28,20 @@ export function SessionCard({ session: s, admin = false }: { session: SessionWit
       <div className="flex flex-col gap-1">
         <h2 className="flex items-center gap-2 text-lg font-semibold">
           {s.title}
-          {admin && <EditPencil sessionId={s.id} />}
+          {admin && <EditPencil sessionId={s.id} title={t.session.editPencil} />}
         </h2>
         <p className="text-sm">
-          <span>{formatDate(s.startsAt)}</span>,{" "}
-          {formatTime(s.startsAt)}–{formatTime(s.endsAt)}
+          {formatDate(s.startsAt, locale)}, {formatTime(s.startsAt, locale)}–{formatTime(s.endsAt, locale)}
         </p>
         <p className="text-sm text-muted">{s.place}</p>
         {s.note && <p className="text-sm text-muted whitespace-pre-line">{s.note}</p>}
-        <ScriptLinks scripts={s.scripts} />
+        <ScriptLinks scripts={s.scripts} label={t.session.scripts(s.scripts.length)} />
       </div>
       <div className="flex flex-col items-start gap-2 sm:items-end">
         <span
           className={`text-sm font-medium ${full ? "text-accent" : "text-green-700 dark:text-green-400"}`}
         >
-          {full
-            ? "Plno"
-            : `${free} ${free === 1 ? "volné místo" : free < 5 ? "volná místa" : "volných míst"} z ${s.capacity}`}
+          {full ? t.session.full : t.session.freeSpots(free, s.capacity)}
         </span>
         <Link
           href={`/termin/${s.id}`}
@@ -43,7 +51,7 @@ export function SessionCard({ session: s, admin = false }: { session: SessionWit
               : "bg-accent text-accent-foreground hover:opacity-90"
           }`}
         >
-          {full ? "Detail" : "Registrovat"}
+          {full ? t.session.detail : t.session.register}
         </Link>
       </div>
     </Card>

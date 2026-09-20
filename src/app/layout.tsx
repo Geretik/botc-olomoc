@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import Link from "next/link";
+import { LanguageSwitch } from "@/components/language-switch";
+import { getDict } from "@/i18n/server";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -8,23 +10,25 @@ const geistSans = Geist({
   subsets: ["latin", "latin-ext"],
 });
 
-export const metadata: Metadata = {
-  title: "Blood on the Clocktower Olomouc",
-  description: "Registrace na herní večery Blood on the Clocktower v Olomouci",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getDict();
+  return { title: t.meta.title, description: t.meta.description };
+}
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const { locale, t } = await getDict();
   return (
-    <html lang="cs" className={`${geistSans.variable} h-full antialiased`}>
+    <html lang={locale} className={`${geistSans.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <header className="border-b border-border">
-          <div className="mx-auto max-w-3xl px-4 py-4 flex items-center justify-between">
+          <div className="mx-auto max-w-3xl px-4 py-4 flex items-center justify-between gap-4">
             <Link href="/" className="font-semibold tracking-tight text-lg">
               🕰️ Blood on the Clocktower <span className="text-muted">Olomouc</span>
             </Link>
-            <nav className="flex gap-4 text-sm">
-              <Link href="/" className="hover:underline">Termíny</Link>
-              <Link href="/o-hre" className="hover:underline">O hře</Link>
+            <nav className="flex items-center gap-4 text-sm">
+              <Link href="/" className="hover:underline">{t.nav.sessions}</Link>
+              <Link href="/o-hre" className="hover:underline">{t.nav.about}</Link>
+              <LanguageSwitch locale={locale} t={t} />
             </nav>
           </div>
         </header>
@@ -33,9 +37,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </main>
         <footer className="border-t border-border">
           <div className="mx-auto max-w-3xl px-4 py-4 text-sm text-muted flex justify-between">
-            <span>Herní večery v Olomouci</span>
+            <span>{t.nav.footer}</span>
             <Link href="/admin" className="hover:underline">
-              Admin
+              {t.nav.admin}
             </Link>
           </div>
         </footer>

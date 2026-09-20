@@ -1,30 +1,31 @@
+import type { Locale } from "@/i18n/dictionaries";
+
 export const TZ = "Europe/Prague";
 
-const dateFmt = new Intl.DateTimeFormat("cs-CZ", {
-  timeZone: TZ,
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
+const intlLocale: Record<Locale, string> = { cs: "cs-CZ", en: "en-GB" };
 
-const timeFmt = new Intl.DateTimeFormat("cs-CZ", {
-  timeZone: TZ,
-  hour: "2-digit",
-  minute: "2-digit",
-});
+const fmtCache = new Map<string, Intl.DateTimeFormat>();
+function fmt(locale: Locale, opts: Intl.DateTimeFormatOptions) {
+  const key = locale + JSON.stringify(opts);
+  let f = fmtCache.get(key);
+  if (!f) {
+    f = new Intl.DateTimeFormat(intlLocale[locale], { timeZone: TZ, ...opts });
+    fmtCache.set(key, f);
+  }
+  return f;
+}
 
-export function formatDate(d: Date) {
-  const s = dateFmt.format(d);
+export function formatDate(d: Date, locale: Locale = "cs") {
+  const s = fmt(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(d);
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-export function formatTime(d: Date) {
-  return timeFmt.format(d);
+export function formatTime(d: Date, locale: Locale = "cs") {
+  return fmt(locale, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(d);
 }
 
-export function formatRange(start: Date, end: Date) {
-  return `${formatDate(start)}, ${formatTime(start)}–${formatTime(end)}`;
+export function formatRange(start: Date, end: Date, locale: Locale = "cs") {
+  return `${formatDate(start, locale)}, ${formatTime(start, locale)}–${formatTime(end, locale)}`;
 }
 
 /** Offset of Europe/Prague from UTC at a given instant, in minutes. */
@@ -60,7 +61,6 @@ export function pragueLocalToDate(value: string): Date | null {
   const guess = Date.UTC(y, mo - 1, d, h, mi);
   const offset = tzOffsetMinutes(new Date(guess));
   const result = new Date(guess - offset * 60000);
-  // second pass handles DST boundary edge cases
   const offset2 = tzOffsetMinutes(result);
   if (offset2 !== offset) return new Date(guess - offset2 * 60000);
   return result;

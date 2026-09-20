@@ -1,13 +1,24 @@
-name: CI
+name: CI & Deploy
 
 on:
   push:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  check:
+  test:
+    name: Lint, typecheck, build, e2e
     runs-on: ubuntu-latest
+    outputs:
+      deploy: ${{ steps.gate.outputs.deploy }}
+    env:
+      # Build/tests run against an embedded Postgres (PGlite); no external services needed.
+      ADMIN_PASSWORD: e2e-admin
+      ADMIN_SECRET: e2e-secret
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,5 +31,46 @@ jobs:
       - run: npm run build
         env:
           DATABASE_URL: postgres://ci:ci@localhost:5432/ci
-          ADMIN_PASSWORD: ci
-          ADMIN_SECRET: ci
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      - name: E2E tests
+        run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7
+      - name: Deploy gate (skips deploy until VERCEL_TOKEN secret exists)
+        id: gate
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: echo "deploy=$([ -n "$VERCEL_TOKEN" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy to Vercel (production)
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.test.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Apply database schema
+        run: npx drizzle-kit push --force
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - name: Pull Vercel project settings
+        run: npx vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+      - name: Build
+        run: npx vercel build --prod --token="$VERCEL_TOKEN"
+      - name: Deploy
+        run: npx vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"

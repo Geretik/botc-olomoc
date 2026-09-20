@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import type { Registration, Session } from "@/db/schema";
+import { dictionaries, type Locale } from "@/i18n/dictionaries";
 import { formatRange, formatTime } from "./time";
 import { editUrl } from "./site";
 
@@ -22,67 +23,65 @@ async function send(to: string, subject: string, html: string, text: string) {
   const { error } = await resend.emails.send({ from, to, subject, html, text });
   if (error) {
     console.error("Resend error", error);
-    throw new Error("Odeslání e-mailu se nezdařilo.");
+    throw new Error("E-mail could not be sent.");
   }
 }
 
-function registrationSummary(reg: Registration, session: Session) {
-  const arrival = reg.arrivalTime ?? formatTime(session.startsAt);
-  const departure = reg.departureTime ?? formatTime(session.endsAt);
-  return { arrival, departure };
+function localeOf(reg: Registration): Locale {
+  return reg.locale === "en" ? "en" : "cs";
 }
 
-export async function sendConfirmationEmail(
-  reg: Registration,
-  session: Session,
-) {
-  const { arrival, departure } = registrationSummary(reg, session);
+export async function sendConfirmationEmail(reg: Registration, session: Session) {
+  const locale = localeOf(reg);
+  const t = dictionaries[locale].email;
+  const arrival = reg.arrivalTime ?? formatTime(session.startsAt, locale);
+  const departure = reg.departureTime ?? formatTime(session.endsAt, locale);
   const link = editUrl(reg.editToken);
-  const when = formatRange(session.startsAt, session.endsAt);
+  const when = formatRange(session.startsAt, session.endsAt, locale);
 
-  const text = `Ahoj ${reg.firstName},
+  const text = `${t.hi(reg.firstName)}
 
-tvoje registrace na Blood on the Clocktower je potvrzená.
+${t.confirmed}
 
-Termín: ${session.title}
-Kdy: ${when}
-Kde: ${session.place}
-Tvůj příchod / odchod: ${arrival}–${departure}
+${t.session}: ${session.title}
+${t.when}: ${when}
+${t.where}: ${session.place}
+${t.yourArrivalDeparture}: ${arrival}–${departure}
 
-Registraci můžeš upravit nebo zrušit na tomto odkazu (nikomu ho neposílej):
+${t.editText}
 ${link}
 
-Těšíme se na tebe!`;
+${t.seeYou}`;
 
-  const html = `<p>Ahoj ${escapeHtml(reg.firstName)},</p>
-<p>tvoje registrace na <strong>Blood on the Clocktower</strong> je potvrzená.</p>
+  const html = `<p>${escapeHtml(t.hi(reg.firstName))}</p>
+<p>${escapeHtml(t.confirmed)}</p>
 <table cellpadding="4" style="border-collapse:collapse">
-<tr><td><strong>Termín</strong></td><td>${escapeHtml(session.title)}</td></tr>
-<tr><td><strong>Kdy</strong></td><td>${escapeHtml(when)}</td></tr>
-<tr><td><strong>Kde</strong></td><td>${escapeHtml(session.place)}</td></tr>
-<tr><td><strong>Příchod / odchod</strong></td><td>${arrival}–${departure}</td></tr>
+<tr><td><strong>${t.session}</strong></td><td>${escapeHtml(session.title)}</td></tr>
+<tr><td><strong>${t.when}</strong></td><td>${escapeHtml(when)}</td></tr>
+<tr><td><strong>${t.where}</strong></td><td>${escapeHtml(session.place)}</td></tr>
+<tr><td><strong>${t.arrivalDeparture}</strong></td><td>${arrival}–${departure}</td></tr>
 </table>
-<p>Registraci můžeš <a href="${link}">upravit nebo zrušit zde</a>. Odkaz je jen pro tebe, nikomu ho neposílej.</p>
-<p>Těšíme se na tebe!</p>`;
+<p>${t.editHtmlBefore}<a href="${link}">${t.editHtmlLink}</a>${t.editHtmlAfter}</p>
+<p>${t.seeYou}</p>`;
 
-  await send(reg.email, `Potvrzení registrace: ${session.title}`, html, text);
+  await send(reg.email, t.confirmSubject(session.title), html, text);
 }
 
-export async function sendExistingRegistrationEmail(
-  reg: Registration,
-  session: Session,
-) {
+export async function sendExistingRegistrationEmail(reg: Registration, session: Session) {
+  const locale = localeOf(reg);
+  const t = dictionaries[locale].email;
   const link = editUrl(reg.editToken);
-  const text = `Ahoj ${reg.firstName},
+  const when = formatRange(session.startsAt, session.endsAt, locale);
+  const text = `${t.hi(reg.firstName)}
 
-na termín "${session.title}" (${formatRange(session.startsAt, session.endsAt)}) už jsi registrovaný/á.
+${t.alreadyText(session.title, when)}
 
-Registraci můžeš upravit nebo zrušit zde:
+${t.alreadyEdit}
 ${link}`;
 
-  const html = `<p>Ahoj ${escapeHtml(reg.firstName)},</p>
-<p>na termín <strong>${escapeHtml(session.title)}</strong> (${escapeHtml(formatRange(session.startsAt, session.endsAt))}) už jsi registrovaný/á.</p>
-<p>Registraci můžeš <a href="${link}">upravit nebo zrušit zde</a>.</p>`;
+  const html = `<p>${escapeHtml(t.hi(reg.firstName))}</p>
+<p>${escapeHtml(t.alreadyText(session.title, when))}</p>
+<p>${t.editHtmlBefore}<a href="${link}">${t.editHtmlLink}</a>.</p>`;
 
-  await send(reg.email, `Tvoje registrace: ${session.title}`, html, text);
+  await send(reg.email, t.existingSubject(session.title), html, text);
 }
