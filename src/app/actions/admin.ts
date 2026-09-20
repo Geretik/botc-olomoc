@@ -12,7 +12,12 @@ import {
   setAdminCookie,
 } from "@/lib/admin-auth";
 import { pragueLocalToDate } from "@/lib/time";
-import { fieldErrorsOf, sessionSchema, type FormState } from "@/lib/validation";
+import {
+  fieldErrorsOf,
+  parseScripts,
+  sessionSchema,
+  type FormState,
+} from "@/lib/validation";
 
 async function requireAdmin() {
   if (!(await isAdmin())) redirect("/admin/login");
@@ -45,8 +50,11 @@ function parseSessionForm(formData: FormData) {
   if (!startsAt) return { error: { startsAt: ["Neplatný začátek"] } };
   if (!endsAt) return { error: { endsAt: ["Neplatný konec"] } };
   if (endsAt <= startsAt) return { error: { endsAt: ["Konec musí být po začátku"] } };
+  const scripts = parseScripts(formData);
+  if (scripts.error) return { error: { scripts: scripts.error } };
   return {
     values: {
+      scripts: scripts.scripts,
       title: parsed.data.title,
       place: parsed.data.place,
       capacity: parsed.data.capacity,

@@ -57,7 +57,7 @@ export function EditRegistrationForm({
             <input id="lastName" name="lastName" required defaultValue={r.lastName} className={inputClass} />
           </Field>
         </div>
-        <Field label="Přezdívka" name="nickname" errors={fe.nickname}>
+        <Field label="Přezdívka" name="nickname" errors={fe.nickname} hint="Bude zobrazena na webu v seznamu přihlášených.">
           <input id="nickname" name="nickname" required defaultValue={r.nickname} className={inputClass} />
         </Field>
         <Field label="E-mail" name="email">

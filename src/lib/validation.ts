@@ -35,6 +35,26 @@ export const sessionSchema = z.object({
     .transform((v) => (v === "" ? null : v)),
 });
 
+const scriptLinkSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  url: z.string().trim().url("Zadej platnou adresu (https://…)").max(2000),
+});
+
+/** Reads scriptName[] / scriptUrl[] pairs from a FormData, ignoring fully empty rows. */
+export function parseScripts(formData: FormData) {
+  const names = formData.getAll("scriptName").map(String);
+  const urls = formData.getAll("scriptUrl").map(String);
+  const rows = names.map((name, i) => ({ name, url: urls[i] ?? "" }));
+  const filled = rows.filter((r) => r.name.trim() || r.url.trim());
+  const result = z.array(scriptLinkSchema).safeParse(
+    filled.map((r) => ({ name: r.name.trim() || r.url.trim(), url: r.url })),
+  );
+  if (!result.success) {
+    return { error: ["Každý script potřebuje platnou adresu (https://…)"] };
+  }
+  return { scripts: result.data };
+}
+
 export type FormState = {
   ok?: boolean;
   error?: string;

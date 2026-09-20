@@ -57,7 +57,7 @@ export function RegistrationForm({
           <input id="lastName" name="lastName" required className={inputClass} autoComplete="family-name" />
         </Field>
       </div>
-      <Field label="Přezdívka" name="nickname" errors={fe.nickname} hint="Jak ti říkají u stolu.">
+      <Field label="Přezdívka" name="nickname" errors={fe.nickname} hint="Jak ti říkají u stolu. Přezdívka bude zobrazena na webu v seznamu přihlášených, ostatní údaje vidí jen organizátoři.">
         <input id="nickname" name="nickname" required className={inputClass} autoComplete="nickname" />
       </Field>
       <Field label="E-mail" name="email" errors={fe.email} hint="Pošleme ti potvrzení a odkaz na úpravu.">

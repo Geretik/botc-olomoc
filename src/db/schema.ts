@@ -1,5 +1,6 @@
 import {
   integer,
+  jsonb,
   pgTable,
   serial,
   text,
@@ -16,10 +17,14 @@ export const sessions = pgTable("sessions", {
   place: text("place").notNull(),
   capacity: integer("capacity").notNull(),
   note: text("note"),
+  /** Links to scripts played that evening (botcscripts.com, script tool, PDF on a drive, …) */
+  scripts: jsonb("scripts").$type<ScriptLink[]>().notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
 });
+
+export type ScriptLink = { name: string; url: string };
 
 export const registrations = pgTable(
   "registrations",

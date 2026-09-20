@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { SessionWithCount } from "@/lib/queries";
 import { formatDate, formatTime } from "@/lib/time";
+import { ScriptLinks } from "./script-links";
 import { Card } from "./ui";
 
 export function freeSpots(s: SessionWithCount) {
@@ -20,6 +21,7 @@ export function SessionCard({ session: s }: { session: SessionWithCount }) {
         </p>
         <p className="text-sm text-muted">{s.place}</p>
         {s.note && <p className="text-sm text-muted whitespace-pre-line">{s.note}</p>}
+        <ScriptLinks scripts={s.scripts} />
       </div>
       <div className="flex flex-col items-start gap-2 sm:items-end">
         <span

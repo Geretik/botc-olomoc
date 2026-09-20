@@ -21,6 +21,7 @@ export async function listUpcomingSessions(): Promise<SessionWithCount[]> {
       place: sessions.place,
       capacity: sessions.capacity,
       note: sessions.note,
+      scripts: sessions.scripts,
       createdAt: sessions.createdAt,
       confirmedCount,
     })
@@ -40,6 +41,7 @@ export async function listAllSessions(): Promise<SessionWithCount[]> {
       place: sessions.place,
       capacity: sessions.capacity,
       note: sessions.note,
+      scripts: sessions.scripts,
       createdAt: sessions.createdAt,
       confirmedCount,
     })
@@ -59,6 +61,7 @@ export async function getSessionWithCount(
       place: sessions.place,
       capacity: sessions.capacity,
       note: sessions.note,
+      scripts: sessions.scripts,
       createdAt: sessions.createdAt,
       confirmedCount,
     })
@@ -79,4 +82,19 @@ export async function listRegistrationsForSession(sessionId: number) {
     where: and(eq(registrations.sessionId, sessionId)),
     orderBy: [asc(registrations.createdAt)],
   });
+}
+
+/** Nicknames of confirmed players, shown publicly on the session page. */
+export async function listConfirmedNicknames(sessionId: number) {
+  const rows = await db
+    .select({ nickname: registrations.nickname })
+    .from(registrations)
+    .where(
+      and(
+        eq(registrations.sessionId, sessionId),
+        eq(registrations.status, "confirmed"),
+      ),
+    )
+    .orderBy(asc(registrations.createdAt));
+  return rows.map((r) => r.nickname);
 }

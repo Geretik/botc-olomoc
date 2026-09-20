@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import type { Session } from "@/db/schema";
 import type { FormState } from "@/lib/validation";
 import { Alert, Button, Field, inputClass } from "../ui";
+import { ScriptsFields } from "./scripts-fields";
 
 export function SessionForm({
   action: serverAction,
@@ -41,6 +42,7 @@ export function SessionForm({
       <Field label="Poznámka" name="note" errors={fe.note} hint="Volitelné, např. scénář nebo co přinést.">
         <textarea id="note" name="note" rows={3} defaultValue={session?.note ?? ""} className={inputClass} />
       </Field>
+      <ScriptsFields initial={session?.scripts ?? []} errors={fe.scripts} />
       <Button type="submit" disabled={pending}>
         {pending ? "Ukládám…" : session ? "Uložit změny" : "Vytvořit termín"}
       </Button>
