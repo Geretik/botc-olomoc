@@ -36,10 +36,11 @@ export function ScriptsFields({
           />
           <input
             name="scriptUrl"
-            type="url"
+            type="text"
+            inputMode="url"
             defaultValue={row.url}
             placeholder="https://…"
-            className={inputClass}
+            className={`${inputClass} ${errors?.length ? "border-accent" : ""}`}
             aria-label={`Odkaz na script ${i + 1}`}
           />
           <Button
@@ -53,7 +54,7 @@ export function ScriptsFields({
         </div>
       ))}
       {errors?.map((e) => (
-        <p key={e} className="text-xs text-accent">{e}</p>
+        <p key={e} className="text-sm font-medium text-accent">{e}</p>
       ))}
       <div>
         <Button

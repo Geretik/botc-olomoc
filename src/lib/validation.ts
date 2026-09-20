@@ -37,7 +37,12 @@ export const sessionSchema = z.object({
 
 const scriptLinkSchema = z.object({
   name: z.string().trim().min(1).max(200),
-  url: z.string().trim().url("Zadej platnou adresu (https://…)").max(2000),
+  url: z
+    .string()
+    .trim()
+    // "botcscripts.com/…" → "https://botcscripts.com/…"
+    .transform((u) => (/^[a-z][a-z0-9+.-]*:\/\//i.test(u) ? u : `https://${u}`))
+    .pipe(z.string().url("Zadej platnou adresu (https://…)").max(2000)),
 });
 
 /** Reads scriptName[] / scriptUrl[] pairs from a FormData, ignoring fully empty rows. */
@@ -50,7 +55,12 @@ export function parseScripts(formData: FormData) {
     filled.map((r) => ({ name: r.name.trim() || r.url.trim(), url: r.url })),
   );
   if (!result.success) {
-    return { error: ["Každý script potřebuje platnou adresu (https://…)"] };
+    const bad = result.error.issues.map((i) => Number(i.path[0]) + 1);
+    return {
+      error: [
+        `Script č. ${[...new Set(bad)].join(", ")} nemá platnou webovou adresu (např. https://botcscripts.com/…).`,
+      ],
+    };
   }
   return { scripts: result.data };
 }
