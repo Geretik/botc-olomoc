@@ -12,6 +12,7 @@ export function ScriptLinks({
   if (!scripts.length) return null;
   return (
     <p className={`text-sm ${className}`}>
+      <span aria-hidden className="mr-1.5">📜</span>
       <span className="text-muted">{label}</span>
       {scripts.map((s, i) => (
         <span key={s.url}>

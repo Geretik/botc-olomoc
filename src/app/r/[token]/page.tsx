@@ -35,9 +35,13 @@ export default async function EditRegistrationPage({
         <h1 className="text-3xl font-bold tracking-tight">{t.edit.title}</h1>
         <p className="mt-2 font-medium">{s.title}</p>
         <p>
+          <span aria-hidden className="mr-1.5">📅</span>
           {formatDate(s.startsAt, locale)}, {formatTime(s.startsAt, locale)}–{formatTime(s.endsAt, locale)}
         </p>
-        <p className="text-muted">{s.place}</p>
+        <p className="text-muted">
+          <span aria-hidden className="mr-1.5">📍</span>
+          {s.place}
+        </p>
       </div>
       <Card>
         {reg.status === "cancelled" ? (

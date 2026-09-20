@@ -42,11 +42,18 @@ export default async function SessionPage({
           {admin && <EditPencil sessionId={session.id} title={t.session.editPencil} />}
         </h1>
         <p className="mt-2">
+          <span aria-hidden className="mr-1.5">📅</span>
           {formatDate(session.startsAt, locale)}, {formatTime(session.startsAt, locale)}–{formatTime(session.endsAt, locale)}
         </p>
-        <p className="text-muted">{session.place}</p>
+        <p className="text-muted">
+          <span aria-hidden className="mr-1.5">📍</span>
+          {session.place}
+        </p>
         {session.note && (
-          <p className="mt-2 text-muted whitespace-pre-line">{session.note}</p>
+          <p className="mt-2 text-muted whitespace-pre-line">
+            <span aria-hidden className="mr-1.5">📝</span>
+            {session.note}
+          </p>
         )}
         <ScriptLinks scripts={session.scripts} label={t.session.scripts(session.scripts.length)} className="mt-2" />
         <p className="mt-2 text-sm font-medium">

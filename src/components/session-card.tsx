@@ -31,10 +31,19 @@ export function SessionCard({
           {admin && <EditPencil sessionId={s.id} title={t.session.editPencil} />}
         </h2>
         <p className="text-sm">
+          <span aria-hidden className="mr-1.5">📅</span>
           {formatDate(s.startsAt, locale)}, {formatTime(s.startsAt, locale)}–{formatTime(s.endsAt, locale)}
         </p>
-        <p className="text-sm text-muted">{s.place}</p>
-        {s.note && <p className="text-sm text-muted whitespace-pre-line">{s.note}</p>}
+        <p className="text-sm text-muted">
+          <span aria-hidden className="mr-1.5">📍</span>
+          {s.place}
+        </p>
+        {s.note && (
+          <p className="text-sm text-muted whitespace-pre-line">
+            <span aria-hidden className="mr-1.5">📝</span>
+            {s.note}
+          </p>
+        )}
         <ScriptLinks scripts={s.scripts} label={t.session.scripts(s.scripts.length)} />
       </div>
       <div className="flex flex-col items-start gap-2 sm:items-end">
