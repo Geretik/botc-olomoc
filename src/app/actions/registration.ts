@@ -122,6 +122,7 @@ export async function registerAction(
         nickname: data.nickname,
         arrivalTime: data.arrivalTime,
         departureTime: data.departureTime,
+        note: data.note ?? null,
         canStorytell: data.canStorytell,
         isNewbie: data.isNewbie,
         status: full ? ("waitlisted" as const) : ("confirmed" as const),

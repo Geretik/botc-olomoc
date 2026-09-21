@@ -58,6 +58,8 @@ export const registrations = pgTable(
     canStorytell: boolean("can_storytell").notNull().default(false),
     /** Player is new to the game */
     isNewbie: boolean("is_newbie").notNull().default(false),
+    /** Free-text note for the organisers, never shown publicly */
+    note: text("note"),
     /** Attendance marked by the organiser after the session; null = not marked */
     attended: boolean("attended"),
     /** Set when the "tomorrow is game night" reminder was sent – sent at most once */

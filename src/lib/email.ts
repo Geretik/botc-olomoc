@@ -44,15 +44,16 @@ function detailsTable(t: EmailDict, reg: Registration, session: Session, locale:
   const arrival = reg.arrivalTime ?? formatTime(session.startsAt, locale);
   const departure = reg.departureTime ?? formatTime(session.endsAt, locale);
   const when = formatRange(session.startsAt, session.endsAt, locale);
+  const st = session.storyteller;
   const text = `${t.session}: ${session.title}
 ${t.when}: ${when}
 ${t.where}: ${session.place}
-${t.yourArrivalDeparture}: ${arrival}–${departure}`;
+${st ? `🎩 ${t.storyteller}: ${st}\n` : ""}${t.yourArrivalDeparture}: ${arrival}–${departure}`;
   const html = `<table cellpadding="4" style="border-collapse:collapse">
 <tr><td><strong>${t.session}</strong></td><td>${escapeHtml(session.title)}</td></tr>
 <tr><td><strong>${t.when}</strong></td><td>${escapeHtml(when)}</td></tr>
 <tr><td><strong>${t.where}</strong></td><td>${escapeHtml(session.place)}</td></tr>
-<tr><td><strong>${t.arrivalDeparture}</strong></td><td>${arrival}–${departure}</td></tr>
+${st ? `<tr><td><strong>🎩 ${t.storyteller}</strong></td><td>${escapeHtml(st)}</td></tr>\n` : ""}<tr><td><strong>${t.arrivalDeparture}</strong></td><td>${arrival}–${departure}</td></tr>
 </table>`;
   return { text, html, when };
 }

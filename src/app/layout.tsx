@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import Link from "next/link";
 import { LanguageSwitch } from "@/components/language-switch";
@@ -10,6 +10,13 @@ const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin", "latin-ext"],
 });
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#8b1e2d" },
+    { media: "(prefers-color-scheme: dark)", color: "#16120f" },
+  ],
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   const { locale, t } = await getDict();
@@ -25,6 +32,7 @@ export async function generateMetadata(): Promise<Metadata> {
       locale: locale === "cs" ? "cs_CZ" : "en_GB",
     },
     twitter: { card: "summary_large_image" },
+    appleWebApp: { capable: true, title: "BotC", statusBarStyle: "black-translucent" },
   };
 }
 

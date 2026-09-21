@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import {
   adminCancelRegistrationAction,
   adminConfirmWaitlistedAction,
+  adminResendLinkAction,
   adminRestoreRegistrationAction,
   announceDiscordAction,
   deleteSessionAction,
@@ -33,6 +34,7 @@ function Flags({ r, t }: { r: Registration; t: Dict["admin"]["session"] }) {
       {r.status !== "cancelled" && !r.confirmationSentAt && (
         <span title={t.noConfirmation} aria-label={t.noConfirmation}> ⚠️</span>
       )}
+      {r.note && <span title={`${t.playerNote}: ${r.note}`} aria-label={t.playerNote}> 📝</span>}
     </>
   );
 }
@@ -155,12 +157,29 @@ export default async function AdminSessionPage({
                     </td>
                     <td className="p-3 text-right whitespace-nowrap">
                       <a href={editUrl(r.editToken)} className="mr-3 text-muted hover:underline" target="_blank" rel="noreferrer">{t.link}</a>
+                      <span className="mr-3">
+                        <ActionButton
+                          action={adminResendLinkAction.bind(null, r.id)}
+                          label="✉️"
+                          pendingLabel="…"
+                          title={t.resendLink}
+                          confirmText={t.resendLinkConfirm}
+                        />
+                      </span>
                       <form action={adminCancelRegistrationAction.bind(null, r.id)} className="inline">
                         <Button type="submit" variant="danger">{t.cancel}</Button>
                       </form>
                     </td>
                   </tr>
                 ))}
+                {confirmed.some((r) => r.note) && (
+                  <tr className="bg-border/20 text-xs text-muted">
+                    <td colSpan={7} className="p-3">
+                      <strong>{t.playerNote}:</strong>{" "}
+                      {confirmed.filter((r) => r.note).map((r) => `${r.nickname}: „${r.note}“`).join(" · ")}
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

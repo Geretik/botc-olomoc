@@ -40,6 +40,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     r.canStorytell,
     r.isNewbie,
     r.attended === null ? "" : r.attended,
+    r.note,
     r.createdAt.toISOString(),
   ]);
   // semicolon-separated + BOM so Czech Excel opens it correctly

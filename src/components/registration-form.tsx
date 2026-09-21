@@ -92,6 +92,9 @@ export function RegistrationForm({
       </div>
       <Checkbox name="canStorytell" label={t.canStorytell} hint={t.canStorytellHint} />
       <Checkbox name="isNewbie" label={t.isNewbie} hint={t.isNewbieHint} />
+      <Field label={t.note} name="note" errors={fe.note} hint={t.noteHint}>
+        <textarea id="note" name="note" rows={2} maxLength={500} className={inputClass} />
+      </Field>
       <div className="hidden" aria-hidden>
         <label htmlFor="website">Website</label>
         <input id="website" name="website" tabIndex={-1} autoComplete="off" />

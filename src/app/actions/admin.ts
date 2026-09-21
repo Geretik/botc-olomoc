@@ -16,7 +16,7 @@ import {
 import { countAdminUsers, createInvite, getOpenInvite } from "@/lib/admin-users";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { announceSessionOnDiscord } from "@/lib/discord";
-import { sendBroadcastEmail } from "@/lib/email";
+import { sendBroadcastEmail, sendExistingRegistrationEmail } from "@/lib/email";
 import { sendDueReminders } from "@/lib/reminders";
 import { getDict } from "@/i18n/server";
 import { inviteUrl } from "@/lib/site";
@@ -311,6 +311,30 @@ export async function setAttendanceAction(registrationId: number, attended: bool
     .where(eq(registrations.id, registrationId))
     .returning({ sessionId: registrations.sessionId });
   if (row) revalidatePath(`/admin/termin/${row.sessionId}`);
+}
+
+/** E-mails a player the link to their registration again (also marks a failed confirmation as sent). */
+export async function adminResendLinkAction(registrationId: number): Promise<SimpleResult> {
+  await requireAdmin();
+  const { t } = await getDict();
+  const reg = await db.query.registrations.findFirst({
+    where: eq(registrations.id, registrationId),
+    with: { session: true },
+  });
+  if (!reg) return { message: t.admin.errors.noSession };
+  try {
+    await sendExistingRegistrationEmail(reg, reg.session);
+  } catch (e) {
+    console.error("Resend link failed", e);
+    return { ok: false, message: t.admin.errors.linkFailed };
+  }
+  const now = new Date();
+  await db
+    .update(registrations)
+    .set({ lastEmailAt: now, confirmationSentAt: reg.confirmationSentAt ?? now })
+    .where(eq(registrations.id, registrationId));
+  revalidatePath(`/admin/termin/${reg.sessionId}`);
+  return { ok: true, message: t.admin.errors.linkSent };
 }
 
 export type BroadcastResult = FormState & { sent?: number; failed?: number };

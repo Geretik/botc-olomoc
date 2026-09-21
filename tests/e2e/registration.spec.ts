@@ -170,10 +170,11 @@ test("admin: login, create/edit session with scripts, manage registrations, dele
   await expect(page.locator("main")).toContainText("Vypravěč: Honza");
 
   // register two players, admin sees them, cancels and restores one
-  await register(page, s.id, { nick: "P1", email: "p1@example.com" });
+  await register(page, s.id, { nick: "P1", email: "p1@example.com", note: "přijdu s kamarádem" });
   await register(page, s.id, { nick: "P2", email: "p2@example.com" });
   await page.goto(`/admin/termin/${s.id}`);
   await expect(page.locator("main")).toContainText("Přihlášení (2 / 10)");
+  await expect(page.locator("main")).toContainText("Poznámka hráče: P1: „přijdu s kamarádem“");
   await expect(page.locator("main")).toContainText("p1@example.com");
   await page.click("tr:has-text('p2@example.com') button:has-text('Odhlásit')");
   await expect(page.locator("main")).toContainText("Přihlášení (1 / 10)");

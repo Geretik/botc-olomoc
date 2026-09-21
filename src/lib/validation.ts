@@ -20,6 +20,12 @@ export function registrationSchema(t: Dict["errors"]) {
     departureTime: optionalTime,
     canStorytell: checkbox,
     isNewbie: checkbox,
+    note: z
+      .string()
+      .trim()
+      .max(500)
+      .transform((v) => (v === "" ? null : v))
+      .optional(),
     website: z.string().max(0).optional(), // honeypot
   });
 }

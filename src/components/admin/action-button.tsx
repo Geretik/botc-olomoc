@@ -11,12 +11,14 @@ export function ActionButton({
   pendingLabel = "…",
   confirmText,
   variant = "secondary",
+  title,
 }: {
   action: () => Promise<SimpleResult>;
   label: string;
   pendingLabel?: string;
   confirmText?: string;
   variant?: "primary" | "secondary" | "danger";
+  title?: string;
 }) {
   const [result, setResult] = useState<SimpleResult | null>(null);
   const [pending, start] = useTransition();
@@ -26,6 +28,8 @@ export function ActionButton({
         type="button"
         variant={variant}
         disabled={pending}
+        title={title}
+        aria-label={title}
         onClick={() => {
           if (confirmText && !confirm(confirmText)) return;
           start(async () => setResult(await action()));

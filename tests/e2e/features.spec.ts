@@ -387,3 +387,15 @@ test("cities: public filter, badges, calendar feed per city", async ({ page }) =
   expect(await sql("select city from sessions where title='Nový pražský'")).toEqual([{ city: "praha" }]);
   await expect(page.locator("main a:has-text('Nový pražský')")).toContainText("Praha");
 });
+
+test("pwa manifest and icons are served, share button on session page", async ({ page }) => {
+  const manifest = await page.request.get("/manifest.webmanifest");
+  expect(manifest.ok()).toBeTruthy();
+  const json = await manifest.json();
+  expect(json.display).toBe("standalone");
+  expect((await page.request.get("/icon")).headers()["content-type"]).toContain("image/png");
+
+  const id = await createSession({ title: "Sdílený večer", capacity: 5 });
+  await page.goto(`/termin/${id}`);
+  await expect(page.locator("main button:has-text('Sdílet termín')")).toBeVisible();
+});

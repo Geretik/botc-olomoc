@@ -6,11 +6,13 @@ import { CalendarLinks } from "@/components/calendar-links";
 import { EditPencil } from "@/components/edit-pencil";
 import { PlayerList } from "@/components/player-list";
 import { RegistrationForm } from "@/components/registration-form";
+import { ShareButton } from "@/components/share-button";
 import { ScriptLinks } from "@/components/script-links";
 import { freeSpots } from "@/components/session-card";
 import { Alert, Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 import { CityBadge } from "@/components/city";
+import { sessionUrl } from "@/lib/ics";
 import { isAdmin } from "@/lib/admin-auth";
 import { getSessionWithCount, listPublicPlayers } from "@/lib/queries";
 import { formatDate, formatRange, formatTime } from "@/lib/time";
@@ -97,6 +99,25 @@ export default async function SessionPage({
         )}
         <ScriptLinks scripts={session.scripts} label={t.session.scripts(session.scripts.length)} className="mt-2" />
         {!past && <CalendarLinks session={session} t={t} className="mt-2" />}
+        {!past && (
+          <div className="mt-3">
+            <ShareButton
+              title={session.title}
+              url={sessionUrl(session.id)}
+              text={t.session.shareText({
+                title: session.title,
+                when: formatRange(session.startsAt, session.endsAt, locale),
+                city: t.city[session.city],
+                place: session.place,
+                free,
+                cap: session.capacity,
+                url: sessionUrl(session.id),
+              })}
+              label={t.session.share}
+              copiedLabel={t.session.shareCopied}
+            />
+          </div>
+        )}
         <p className="mt-2 text-sm font-medium">
           {free === 0 ? t.session.full : t.session.freeSpotsLong(free, session.capacity)}
         </p>

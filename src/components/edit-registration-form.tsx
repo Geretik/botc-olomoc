@@ -87,6 +87,9 @@ export function EditRegistrationForm({
         </div>
         <Checkbox name="canStorytell" label={t.canStorytell} hint={t.canStorytellHint} defaultChecked={r.canStorytell} />
         <Checkbox name="isNewbie" label={t.isNewbie} hint={t.isNewbieHint} defaultChecked={r.isNewbie} />
+        <Field label={t.note} name="note" errors={fe.note} hint={t.noteHint}>
+          <textarea id="note" name="note" rows={2} maxLength={500} defaultValue={r.note ?? ""} className={inputClass} />
+        </Field>
         <div className="flex flex-wrap gap-3">
           <Button type="submit" disabled={pending}>
             {pending ? t.saving : t.save}
