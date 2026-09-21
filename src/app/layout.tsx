@@ -36,7 +36,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <header className="border-b border-border">
           <div className="mx-auto max-w-3xl px-4 py-4 flex items-center justify-between gap-4">
             <Link href="/" className="font-semibold tracking-tight text-lg">
-              🕰️ Blood on the Clocktower <span className="text-muted">Olomouc</span>
+              🕰️ {t.meta.title}
             </Link>
             <nav className="flex items-center gap-4 text-sm">
               <Link href="/" className="hover:underline">{t.nav.sessions}</Link>

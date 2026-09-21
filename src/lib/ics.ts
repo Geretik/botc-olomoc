@@ -1,5 +1,6 @@
 import type { Session } from "@/db/schema";
-import { siteUrl } from "./site";
+import type { City } from "@/db/schema";
+import { siteName, siteUrl } from "./site";
 
 /** RFC 5545 text escaping. */
 function esc(s: string) {
@@ -35,7 +36,7 @@ function host() {
   try {
     return new URL(siteUrl()).host;
   } catch {
-    return "botc-olomouc";
+    return "botc";
   }
 }
 
@@ -47,8 +48,8 @@ export function sessionIcsUrl(id: number) {
   return `${siteUrl()}/termin/${id}/kalendar.ics`;
 }
 
-export function feedIcsUrl() {
-  return `${siteUrl()}/kalendar.ics`;
+export function feedIcsUrl(city?: City) {
+  return `${siteUrl()}/kalendar.ics${city ? `?city=${city}` : ""}`;
 }
 
 export function sessionDescription(s: Session) {
@@ -80,7 +81,7 @@ export function buildIcs(list: Session[], calendarName: string, now = new Date()
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//BotC Olomouc//Registrace//CS",
+    `PRODID:-//${esc(siteName())}//Registrace//CS`,
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${esc(calendarName)}`,

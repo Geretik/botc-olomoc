@@ -26,6 +26,10 @@ export default defineConfig({
 });
 
 export const E2E = {
+  /** Bootstrap password (ADMIN_PASSWORD) – only for creating the first account */
   adminPassword: "e2e-admin",
+  /** Account that helpers.adminLogin() creates directly in the database */
+  adminEmail: "admin@example.com",
+  adminUserPassword: "e2e-admin-password",
   databaseUrl: `postgres://postgres:postgres@127.0.0.1:${PG_PORT}/postgres`,
 };

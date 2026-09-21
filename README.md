@@ -21,7 +21,9 @@ registraci upravit nebo zrušit.
 - `/kalendar.ics` – veřejný iCal feed všech termínů (odběr kalendáře)
 - `/archiv` – proběhlé večery s odehranými scripty a počtem hráčů
 - `/r/[token]` – úprava / zrušení registrace přes odkaz z e-mailu
-- `/admin` – správa termínů a přehled přihlášených (chráněno heslem)
+- `/admin` – správa termínů a přehled přihlášených (účty organizátorů s hashovanými hesly, role správce / organizátor)
+- `/admin/ucty` – účty a pozvánky (jen správce): pozvánka vygeneruje jednorázový odkaz, na kterém si nový organizátor založí účet
+- Termíny jsou rozdělené podle města (Olomouc / Praha): filtr na hlavní stránce i v archivu, kalendář iCal pro každé město zvlášť (`/kalendar.ics?city=praha`)
 - `/admin/statistiky` – obsazenost, docházka, pravidelní hráči
 - `/api/cron/reminders` – denní připomínky (Vercel Cron, viz níže)
 
@@ -55,7 +57,7 @@ npm run dev
 
 Bez `RESEND_API_KEY` se e-maily neposílají, jen se vypisují do konzole serveru (včetně editačního odkazu).
 
-Admin: `/admin/login`, heslo z `ADMIN_PASSWORD`.
+Admin: `/admin/login`. Při prvním spuštění (žádný účet) stránka nabídne založení prvního účtu správce chráněné heslem `ADMIN_PASSWORD`; další účty vznikají přes pozvánky v `/admin/ucty`. Hesla se ukládají jako scrypt hash.
 
 ## Proměnné prostředí
 
@@ -65,7 +67,8 @@ Admin: `/admin/login`, heslo z `ADMIN_PASSWORD`.
 | `RESEND_API_KEY` | API klíč Resend (prázdné = e-maily jen do logu) |
 | `EMAIL_FROM` | Odesílatel, např. `BotC Olomouc <registrace@tvojedomena.cz>` (doména musí být ověřená v Resend) |
 | `NEXT_PUBLIC_SITE_URL` | Veřejná URL webu pro odkazy v e-mailech, bez lomítka na konci |
-| `ADMIN_PASSWORD` | Heslo do adminu |
+| `ADMIN_PASSWORD` | Bootstrap heslo, slouží jen k založení prvního účtu správce |
+| `NEXT_PUBLIC_SITE_NAME` | Název webu v hlavičce, e-mailech a kalendářích (výchozí „Blood on the Clocktower CZ“) |
 | `ADMIN_SECRET` | Náhodný řetězec pro podpis admin cookie (`openssl rand -hex 32`) |
 | `CRON_SECRET` | Tajemství pro cron připomínek; Vercel ho posílá automaticky v hlavičce `Authorization: Bearer …` (`openssl rand -hex 32`) |
 | `DISCORD_WEBHOOK_URL` | Volitelné. Webhook Discord kanálu pro oznámení nových termínů (bez něj se tlačítka jen hlásí, že Discord není nastavený) |
@@ -79,7 +82,7 @@ Admin: `/admin/login`, heslo z `ADMIN_PASSWORD`.
    Cron pro připomínky je definovaný v `vercel.json`; Vercel ho po deployi zapne sám (na Hobby plánu běží jednou denně).
 5. Vytvoř tabulky: lokálně s produkčním `DATABASE_URL` spusť `npm run db:push`
    (nebo použij `npm run db:generate` + `npm run db:migrate` pro migrace).
-6. Deploy. Pak v `/admin` vypiš první termín.
+6. Deploy. Pak na `/admin/login` založ první účet správce (heslo z `ADMIN_PASSWORD`) a vypiš první termín.
 
 ## Testy
 

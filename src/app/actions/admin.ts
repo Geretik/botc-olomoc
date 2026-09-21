@@ -1,45 +1,164 @@
 "use server";
 
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { registrations, sessions } from "@/db/schema";
+import { adminInvites, adminUsers, registrations, sessions, type AdminRole, type AdminUser } from "@/db/schema";
 import {
-  checkPassword,
+  checkBootstrapPassword,
   clearAdminCookie,
-  isAdmin,
+  getAdmin,
+  hasRole,
   setAdminCookie,
 } from "@/lib/admin-auth";
+import { countAdminUsers, createInvite, getOpenInvite } from "@/lib/admin-users";
+import { hashPassword, verifyPassword } from "@/lib/password";
 import { announceSessionOnDiscord } from "@/lib/discord";
 import { sendBroadcastEmail } from "@/lib/email";
 import { sendDueReminders } from "@/lib/reminders";
 import { getDict } from "@/i18n/server";
+import { inviteUrl } from "@/lib/site";
 import { pragueLocalToDate } from "@/lib/time";
 import {
+  accountSchema,
   broadcastSchema,
   fieldErrorsOf,
+  inviteSchema,
   parseScripts,
   sessionSchema,
   type FormState,
 } from "@/lib/validation";
 import { promoteWaitlist } from "@/lib/waitlist";
 
-async function requireAdmin() {
-  if (!(await isAdmin())) redirect("/admin/login");
+/** Signed-in organiser (any role); redirects to the login page otherwise. */
+async function requireAdmin(role: AdminRole = "organizer"): Promise<AdminUser> {
+  const user = await getAdmin();
+  if (!user) redirect("/admin/login");
+  if (!hasRole(user, role)) redirect("/admin");
+  return user;
 }
 
 export async function loginAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const { t } = await getDict();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
-  if (!checkPassword(password)) {
-    const { t } = await getDict();
-    return { error: t.admin.errors.wrongPassword };
-  }
-  await setAdminCookie();
+  const user = email ? await db.query.adminUsers.findFirst({ where: eq(adminUsers.email, email) }) : undefined;
+  // verify against a dummy hash when the user is unknown so timing does not reveal valid e-mails
+  const ok = await verifyPassword(password, user?.passwordHash ?? DUMMY_HASH);
+  if (!user || !ok) return { error: t.admin.errors.wrongLogin };
+  await db.update(adminUsers).set({ lastLoginAt: new Date() }).where(eq(adminUsers.id, user.id));
+  await setAdminCookie(user.id);
   redirect("/admin");
+}
+
+const DUMMY_HASH = "scrypt$16384$00000000000000000000000000000000$" + "0".repeat(128);
+
+/** Creates the very first account; guarded by the ADMIN_PASSWORD environment variable. */
+export async function setupFirstAdminAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const { t } = await getDict();
+  const e = t.admin.errors;
+  if ((await countAdminUsers()) > 0) return { error: e.setupDone };
+  if (!checkBootstrapPassword(String(formData.get("bootstrapPassword") ?? ""))) {
+    return { error: e.wrongBootstrap, fieldErrors: { bootstrapPassword: [e.wrongBootstrap] } };
+  }
+  const parsed = accountSchema(e).safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) return { error: e.checkForm, fieldErrors: fieldErrorsOf(parsed.error) };
+  const [user] = await db
+    .insert(adminUsers)
+    .values({
+      nickname: parsed.data.nickname,
+      email: parsed.data.email,
+      passwordHash: await hashPassword(parsed.data.password),
+      role: "admin",
+      lastLoginAt: new Date(),
+    })
+    .returning();
+  await setAdminCookie(user.id);
+  redirect("/admin");
+}
+
+/** Creates an account from an invitation link and logs the new organiser in. */
+export async function acceptInviteAction(
+  token: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const { t } = await getDict();
+  const e = t.admin.errors;
+  const invite = await getOpenInvite(token);
+  if (!invite) return { error: e.inviteInvalid };
+  const parsed = accountSchema(e).safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) return { error: e.checkForm, fieldErrors: fieldErrorsOf(parsed.error) };
+  const taken = await db.query.adminUsers.findFirst({ where: eq(adminUsers.email, parsed.data.email) });
+  if (taken) return { error: e.emailTaken, fieldErrors: { email: [e.emailTaken] } };
+  const passwordHash = await hashPassword(parsed.data.password);
+  const user = await db.transaction(async (tx) => {
+    // mark the invite used first; the where clause makes a double submit fail instead of creating two accounts
+    const [used] = await tx
+      .update(adminInvites)
+      .set({ usedAt: new Date() })
+      .where(and(eq(adminInvites.id, invite.id), isNull(adminInvites.usedAt)))
+      .returning({ id: adminInvites.id });
+    if (!used) return null;
+    const [created] = await tx
+      .insert(adminUsers)
+      .values({
+        nickname: parsed.data.nickname,
+        email: parsed.data.email,
+        passwordHash,
+        role: invite.role,
+        lastLoginAt: new Date(),
+      })
+      .returning();
+    await tx.update(adminInvites).set({ usedBy: created.id }).where(eq(adminInvites.id, invite.id));
+    return created;
+  });
+  if (!user) return { error: e.inviteInvalid };
+  await setAdminCookie(user.id);
+  redirect("/admin");
+}
+
+export type InviteResult = FormState & { url?: string };
+
+export async function createInviteAction(_prev: InviteResult, formData: FormData): Promise<InviteResult> {
+  const me = await requireAdmin("admin");
+  const { t } = await getDict();
+  const parsed = inviteSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) return { error: t.admin.errors.checkForm, fieldErrors: fieldErrorsOf(parsed.error) };
+  const invite = await createInvite(me.id, parsed.data.role, parsed.data.note);
+  revalidatePath("/admin/ucty");
+  return { ok: true, url: inviteUrl(invite.token) };
+}
+
+export async function revokeInviteAction(id: number) {
+  await requireAdmin("admin");
+  await db.delete(adminInvites).where(and(eq(adminInvites.id, id), isNull(adminInvites.usedAt)));
+  revalidatePath("/admin/ucty");
+}
+
+export async function deleteAdminUserAction(id: number): Promise<SimpleResult> {
+  const me = await requireAdmin("admin");
+  const { t } = await getDict();
+  if (id === me.id) return { message: t.admin.errors.cannotDeleteSelf };
+  const target = await db.query.adminUsers.findFirst({ where: eq(adminUsers.id, id) });
+  if (!target) return { ok: true };
+  if (target.role === "admin") {
+    const [{ c }] = await db
+      .select({ c: sql<number>`count(*)::int` })
+      .from(adminUsers)
+      .where(eq(adminUsers.role, "admin"));
+    if (c <= 1) return { message: t.admin.errors.cannotDeleteLastAdmin };
+  }
+  await db.delete(adminUsers).where(eq(adminUsers.id, id));
+  revalidatePath("/admin/ucty");
+  return { ok: true };
 }
 
 export async function logoutAction() {
@@ -65,6 +184,7 @@ async function parseSessionForm(formData: FormData) {
     values: {
       scripts: scripts.scripts,
       title: parsed.data.title,
+      city: parsed.data.city,
       place: parsed.data.place,
       capacity: parsed.data.capacity,
       note: parsed.data.note,

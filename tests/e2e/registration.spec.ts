@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { adminLogin, createSession, register, resetDb, sql } from "./helpers";
+import { E2E } from "../../playwright.config";
+import { adminLogin, createAdminUser, createSession, register, resetDb, sql } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 
@@ -133,11 +134,13 @@ test("language switch translates UI and is remembered", async ({ page }) => {
 });
 
 test("admin: login, create/edit session with scripts, manage registrations, delete", async ({ page }) => {
+  await createAdminUser();
   await page.goto("/admin");
   await expect(page).toHaveURL(/\/admin\/login$/);
+  await page.fill("#email", E2E.adminEmail);
   await page.fill("#password", "wrong");
   await page.click("main button[type=submit]");
-  await expect(page.locator("main")).toContainText("Nesprávné heslo");
+  await expect(page.locator("main")).toContainText("Nesprávný e-mail nebo heslo");
   await adminLogin(page);
 
   await page.goto("/admin/novy");

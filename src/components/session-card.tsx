@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Dict, Locale } from "@/i18n/dictionaries";
 import type { SessionWithCount } from "@/lib/queries";
 import { formatDate, formatTime } from "@/lib/time";
+import { CityBadge } from "./city";
 import { EditPencil } from "./edit-pencil";
 import { ScriptLinks } from "./script-links";
 import { Card } from "./ui";
@@ -26,8 +27,9 @@ export function SessionCard({
   return (
     <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-1">
-        <h2 className="flex items-center gap-2 text-lg font-semibold">
+        <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold">
           {s.title}
+          <CityBadge city={s.city} t={t} />
           {admin && <EditPencil sessionId={s.id} title={t.session.editPencil} />}
         </h2>
         <p className="text-sm">

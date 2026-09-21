@@ -10,6 +10,7 @@ import { ScriptLinks } from "@/components/script-links";
 import { freeSpots } from "@/components/session-card";
 import { Alert, Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
+import { CityBadge } from "@/components/city";
 import { isAdmin } from "@/lib/admin-auth";
 import { getSessionWithCount, listPublicPlayers } from "@/lib/queries";
 import { formatDate, formatRange, formatTime } from "@/lib/time";
@@ -68,8 +69,9 @@ export default async function SessionPage({
         {t.session.back}
       </Link>
       <div>
-        <h1 className="flex items-center gap-3 text-3xl font-bold tracking-tight">
+        <h1 className="flex flex-wrap items-center gap-3 text-3xl font-bold tracking-tight">
           {session.title}
+          <CityBadge city={session.city} t={t} />
           {admin && <EditPencil sessionId={session.id} title={t.session.editPencil} />}
         </h1>
         <p className="mt-2">

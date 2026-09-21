@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { sessions } from "@/db/schema";
 import { buildIcs } from "@/lib/ics";
+import { siteName } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!Number.isInteger(numId)) return new Response("Not found", { status: 404 });
   const session = await db.query.sessions.findFirst({ where: eq(sessions.id, numId) });
   if (!session) return new Response("Not found", { status: 404 });
-  const body = buildIcs([session], `BotC Olomouc – ${session.title}`);
+  const body = buildIcs([session], `${siteName()} – ${session.title}`);
   return new Response(body, {
     headers: {
       "content-type": "text/calendar; charset=utf-8",

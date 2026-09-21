@@ -3,14 +3,15 @@ import { redirect } from "next/navigation";
 import { logoutAction } from "@/app/actions/admin";
 import { Button } from "@/components/ui";
 import { getDict } from "@/i18n/server";
-import { isAdmin } from "@/lib/admin-auth";
+import { getAdmin, hasRole } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
-// The login page lives outside this route group, so it is never wrapped by
-// this layout and the redirect below cannot loop.
+// The login and invitation pages live outside this route group, so they are never
+// wrapped by this layout and the redirect below cannot loop.
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  if (!(await isAdmin())) redirect("/admin/login");
+  const me = await getAdmin();
+  if (!me) redirect("/admin/login");
   const { t } = await getDict();
   return (
     <div className="flex flex-col gap-6">
@@ -18,7 +19,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <Link href="/admin" className="font-semibold">{t.admin.nav.home}</Link>
         <Link href="/admin/novy" className="hover:underline">{t.admin.nav.newSession}</Link>
         <Link href="/admin/statistiky" className="hover:underline">{t.admin.nav.stats}</Link>
-        <form action={logoutAction} className="ml-auto">
+        {hasRole(me, "admin") && <Link href="/admin/ucty" className="hover:underline">{t.admin.nav.accounts}</Link>}
+        <span className="ml-auto text-muted" title={me.email}>{me.nickname}</span>
+        <form action={logoutAction}>
           <Button type="submit" variant="secondary">{t.admin.nav.logout}</Button>
         </form>
       </nav>

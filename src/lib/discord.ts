@@ -1,4 +1,5 @@
 import type { Session } from "@/db/schema";
+import { dictionaries } from "@/i18n/dictionaries";
 import { sessionUrl } from "./ics";
 import { formatRange } from "./time";
 
@@ -18,7 +19,7 @@ export async function announceSessionOnDiscord(
   if (!url) return "not_configured";
   const fields = [
     { name: "📅 Kdy", value: formatRange(s.startsAt, s.endsAt, "cs"), inline: false },
-    { name: "📍 Kde", value: s.place, inline: true },
+    { name: "📍 Kde", value: `${dictionaries.cs.city[s.city]} · ${s.place}`, inline: true },
     { name: "👥 Volná místa", value: `${freeSpots} z ${s.capacity}`, inline: true },
   ];
   if (s.scripts.length) {

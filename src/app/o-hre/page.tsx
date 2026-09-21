@@ -5,7 +5,7 @@ import { AboutContent, H2, Ul } from "./content";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getDict();
-  return { title: `${t.about.title} – Blood on the Clocktower Olomouc`, description: t.about.subtitle };
+  return { title: `${t.about.title} – ${t.meta.title}`, description: t.about.subtitle };
 }
 
 export default async function AboutPage() {

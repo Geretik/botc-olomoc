@@ -10,6 +10,7 @@ import {
   updateSessionAction,
 } from "@/app/actions/admin";
 import { ActionButton } from "@/components/admin/action-button";
+import { CityBadge } from "@/components/city";
 import { AttendanceToggle } from "@/components/admin/attendance-toggle";
 import { BroadcastForm } from "@/components/admin/broadcast-form";
 import { DeleteSessionButton } from "@/components/admin/delete-session-button";
@@ -64,7 +65,7 @@ export default async function AdminSessionPage({
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <h1 className="text-2xl font-bold">{session.title}</h1>
+        <h1 className="flex items-center gap-3 text-2xl font-bold">{session.title}<CityBadge city={session.city} t={dict} /></h1>
         <DeleteSessionButton
           action={deleteSessionAction.bind(null, session.id)}
           label={t.deleteSession}
@@ -111,6 +112,7 @@ export default async function AdminSessionPage({
             endsAt: dateToPragueLocal(session.endsAt),
           }}
           t={dict.admin.form}
+          cityNames={dict.city}
         />
       </Card>
 

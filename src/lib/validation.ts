@@ -1,5 +1,7 @@
 import { z } from "zod";
+import { adminRoles, cities } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
+import { PASSWORD_MIN_LENGTH } from "./password";
 import { TIME_RE } from "./time";
 
 export function registrationSchema(t: Dict["errors"]) {
@@ -43,6 +45,7 @@ export function registrationEditSchema(t: Dict["errors"]) {
 export function sessionSchema(t: Dict["admin"]["errors"]) {
   return z.object({
     title: z.string().trim().min(1, t.fillTitle).max(200),
+    city: z.enum(cities),
     startsAt: z.string().min(1, t.fillStart),
     endsAt: z.string().min(1, t.fillEnd),
     place: z.string().trim().min(1, t.fillPlace).max(300),
@@ -82,6 +85,27 @@ export function parseScripts(formData: FormData, t: Dict["admin"]["errors"]) {
   }
   return { scripts: result.data };
 }
+
+/** Nickname + e-mail + password twice; shared by the first-account setup and invitation forms. */
+export function accountSchema(t: Dict["admin"]["errors"]) {
+  return z
+    .object({
+      nickname: z.string().trim().min(1, t.fillNickname).max(100),
+      email: z.string().trim().toLowerCase().email(t.invalidEmail).max(200),
+      password: z.string().min(PASSWORD_MIN_LENGTH, t.passwordShort(PASSWORD_MIN_LENGTH)).max(200),
+      passwordAgain: z.string(),
+    })
+    .refine((v) => v.password === v.passwordAgain, { message: t.passwordsDiffer, path: ["passwordAgain"] });
+}
+
+export const inviteSchema = z.object({
+  role: z.enum(adminRoles),
+  note: z
+    .string()
+    .trim()
+    .max(200)
+    .transform((v) => (v === "" ? null : v)),
+});
 
 export type FormState = {
   ok?: boolean;

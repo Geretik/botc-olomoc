@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { E2E } from "../../playwright.config";
 import { adminLogin, createSession, register, resetDb, sql } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
@@ -270,4 +271,119 @@ test("admin is available in English after switching the language", async ({ page
   // and back to Czech
   await page.click("header button:has-text('Česky')");
   await expect(page.locator("h1")).toHaveText("Statistiky");
+});
+
+test("accounts: first-run wizard, invitation link, roles", async ({ page, browser }) => {
+  // no account yet → /admin/login shows the setup wizard guarded by ADMIN_PASSWORD
+  await page.goto("/admin/login");
+  await expect(page.locator("h1")).toHaveText("Založení prvního účtu");
+  // the form is reset after every submit, so fill it completely each time
+  const fillSetup = async (bootstrap: string, again: string) => {
+    await page.fill("#bootstrapPassword", bootstrap);
+    await page.fill("#nickname", "Šéf");
+    await page.fill("#email", "boss@example.com");
+    await page.fill("#password", "correct-horse-battery");
+    await page.fill("#passwordAgain", again);
+    await page.click("main button[type=submit]");
+  };
+  await fillSetup("wrong", "correct-horse-battery");
+  await expect(page.locator("main")).toContainText("Heslo ze serveru nesouhlasí");
+
+  await fillSetup(E2E.adminPassword, "different-password-1");
+  await expect(page.locator("main")).toContainText("Hesla se neshodují");
+
+  await fillSetup(E2E.adminPassword, "correct-horse-battery");
+  await page.waitForURL(/\/admin$/);
+  await expect(page.locator("main nav")).toContainText("Šéf");
+  await expect(page.locator("main nav")).toContainText("Účty");
+  expect(await sql("select role, password_hash from admin_users where email='boss@example.com'")).toMatchObject([
+    { role: "admin", password_hash: expect.stringMatching(/^scrypt\$/) },
+  ]);
+
+  // the wizard is gone once an account exists
+  await page.click("main nav button:has-text('Odhlásit')");
+  await page.goto("/admin/login");
+  await expect(page.locator("h1")).toHaveText("Přihlášení do adminu");
+  await adminLogin(page, { email: "boss@example.com", password: "correct-horse-battery" });
+
+  // create an organiser invitation
+  await page.goto("/admin/ucty");
+  await page.selectOption("#role", "organizer");
+  await page.fill("#note", "pro Pavla");
+  await page.click("button:has-text('Vytvořit pozvánku')");
+  const fullUrl = await page.getByTestId("invite-url").textContent();
+  expect(fullUrl).toMatch(/\/admin\/pozvanka\/[A-Za-z0-9_-]+$/);
+  // NEXT_PUBLIC_SITE_URL is inlined at build time, so only the path is reliable here
+  const url = new URL(fullUrl!).pathname;
+  await expect(page.locator("main")).toContainText("pro Pavla");
+
+  // the invitee opens the link in a fresh browser and creates the account
+  const invitee = await browser.newContext({ locale: "cs-CZ" });
+  const p2 = await invitee.newPage();
+  await p2.goto(url!);
+  await expect(p2.locator("h1")).toHaveText("Vytvoření účtu organizátora");
+  await expect(p2.locator("main")).toContainText("organizátor");
+  await p2.fill("#nickname", "Pavel");
+  await p2.fill("#email", "pavel@example.com");
+  await p2.fill("#password", "pavlovo-tajne-heslo");
+  await p2.fill("#passwordAgain", "pavlovo-tajne-heslo");
+  await p2.click("main button[type=submit]");
+  await p2.waitForURL(/\/admin$/);
+  await expect(p2.locator("main nav")).toContainText("Pavel");
+  // an organiser has no account management
+  await expect(p2.locator("main nav")).not.toContainText("Účty");
+  await p2.goto("/admin/ucty");
+  await expect(p2).toHaveURL(/\/admin$/);
+  await invitee.close();
+
+  // the link is single-use
+  await page.goto(url!);
+  await expect(page).toHaveURL(/\/admin$/);
+  const anon = await browser.newContext({ locale: "cs-CZ" });
+  const p3 = await anon.newPage();
+  await p3.goto(url!);
+  await expect(p3.locator("h1")).toHaveText("Pozvánka neplatí");
+  await anon.close();
+
+  // the admin sees both accounts and can delete the organiser, but not the last admin
+  await page.goto("/admin/ucty");
+  await expect(page.locator("main")).toContainText("pavel@example.com");
+  await expect(page.locator("main")).toContainText("Žádné otevřené pozvánky");
+  page.once("dialog", (d) => d.accept());
+  await page.click("tr:has-text('pavel@example.com') button:has-text('Smazat')");
+  await expect(page.locator("main")).not.toContainText("pavel@example.com");
+  expect(await sql("select count(*)::int as c from admin_users")).toEqual([{ c: 1 }]);
+});
+
+test("cities: public filter, badges, calendar feed per city", async ({ page }) => {
+  await createSession({ title: "Olomoucký večer", city: "olomouc" });
+  await createSession({ title: "Pražský večer", city: "praha" });
+
+  await page.goto("/");
+  await expect(page.locator("main")).toContainText("Olomoucký večer");
+  await expect(page.locator("main")).toContainText("Pražský večer");
+  await page.click("main nav a:has-text('Praha')");
+  await expect(page).toHaveURL(/\?city=praha$/);
+  await expect(page.locator("main")).toContainText("Pražský večer");
+  await expect(page.locator("main")).not.toContainText("Olomoucký večer");
+  await expect(page.locator("main a[href$='/kalendar.ics?city=praha']")).toBeVisible();
+
+  const feed = await page.request.get("/kalendar.ics?city=praha");
+  const ics = await feed.text();
+  expect(ics).toContain("Pražský večer");
+  expect(ics).not.toContain("Olomoucký večer");
+  expect(ics).toContain("X-WR-CALNAME:Blood on the Clocktower CZ – Praha");
+
+  // admin: the city is editable and shown in the list
+  await adminLogin(page);
+  await page.goto("/admin/novy");
+  await page.fill("#title", "Nový pražský");
+  await page.selectOption("#city", "praha");
+  await page.fill("#startsAt", "2031-01-10T18:00");
+  await page.fill("#endsAt", "2031-01-10T22:00");
+  await page.fill("#place", "Praha, Kavárna");
+  await page.click("button:has-text('Vytvořit termín')");
+  await page.waitForURL(/\/admin$/);
+  expect(await sql("select city from sessions where title='Nový pražský'")).toEqual([{ city: "praha" }]);
+  await expect(page.locator("main a:has-text('Nový pražský')")).toContainText("Praha");
 });

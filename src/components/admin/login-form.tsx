@@ -11,8 +11,11 @@ export function LoginForm({ t }: { t: Dict["admin"]["login"] }) {
   return (
     <form action={action} className="flex flex-col gap-4">
       {state.error && <Alert kind="error">{state.error}</Alert>}
+      <Field label={t.email} name="email">
+        <input id="email" name="email" type="email" required autoFocus autoComplete="username" className={inputClass} />
+      </Field>
       <Field label={t.password} name="password">
-        <input id="password" name="password" type="password" required autoFocus className={inputClass} />
+        <input id="password" name="password" type="password" required autoComplete="current-password" className={inputClass} />
       </Field>
       <Button type="submit" disabled={pending}>{pending ? t.checking : t.submit}</Button>
     </form>

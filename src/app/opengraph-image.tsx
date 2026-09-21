@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
+import { siteName } from "@/lib/site";
 
-export const alt = "Blood on the Clocktower Olomouc";
+export const alt = siteName();
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -23,9 +24,9 @@ export default function OpenGraphImage() {
       >
         <div style={{ fontSize: 140, lineHeight: 1 }}>🕰</div>
         <div style={{ fontSize: 72, fontWeight: 700, marginTop: 24, letterSpacing: -2 }}>
-          Blood on the Clocktower
+          {siteName()}
         </div>
-        <div style={{ fontSize: 44, color: "#c9394b", fontWeight: 700, marginTop: 8 }}>Olomouc</div>
+        <div style={{ fontSize: 44, color: "#c9394b", fontWeight: 700, marginTop: 8 }}>Olomouc · Praha</div>
         <div style={{ fontSize: 30, color: "#a89c8e", marginTop: 40 }}>
           Herní večery · Game nights
         </div>

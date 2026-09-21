@@ -10,9 +10,14 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
+export const cities = ["olomouc", "praha"] as const;
+export type City = (typeof cities)[number];
+
 export const sessions = pgTable("sessions", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
+  /** Which city the game night is in – the public site can filter by it */
+  city: text("city", { enum: cities }).notNull().default("olomouc"),
   startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
   endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
   place: text("place").notNull(),
@@ -88,6 +93,37 @@ export const registrationsRelations = relations(registrations, ({ one }) => ({
   }),
 }));
 
+export const adminRoles = ["admin", "organizer"] as const;
+export type AdminRole = (typeof adminRoles)[number];
+
+/** Organiser accounts for /admin. Passwords are stored as scrypt hashes (see lib/password.ts). */
+export const adminUsers = pgTable("admin_users", {
+  id: serial("id").primaryKey(),
+  nickname: text("nickname").notNull(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  /** admin = manages accounts and invites too; organizer = sessions and registrations only */
+  role: text("role", { enum: adminRoles }).notNull().default("organizer"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+});
+
+/** One-time invitation links; whoever opens one creates their own account. */
+export const adminInvites = pgTable("admin_invites", {
+  id: serial("id").primaryKey(),
+  token: text("token").notNull().unique(),
+  role: text("role", { enum: adminRoles }).notNull().default("organizer"),
+  /** Optional note for the admin, e.g. who the invite is for */
+  note: text("note"),
+  createdBy: integer("created_by").references(() => adminUsers.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  usedBy: integer("used_by").references(() => adminUsers.id, { onDelete: "set null" }),
+});
+
+export type AdminUser = typeof adminUsers.$inferSelect;
+export type AdminInvite = typeof adminInvites.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type Registration = typeof registrations.$inferSelect;
 export type RegistrationStatus = Registration["status"];
