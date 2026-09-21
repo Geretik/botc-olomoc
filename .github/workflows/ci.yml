@@ -68,14 +68,6 @@ jobs:
         run: npx drizzle-kit push --force
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      - name: Diagnose Vercel access (ids are not secret, they live in .vercel/project.json)
-        run: |
-          echo "token length: ${#VERCEL_TOKEN}"
-          echo "org id: ${VERCEL_ORG_ID:0:5}… (length ${#VERCEL_ORG_ID}, expected 'team_' and 29 chars)"
-          echo "project id: ${VERCEL_PROJECT_ID:0:4}… (length ${#VERCEL_PROJECT_ID}, expected 'prj_' and 28 chars)"
-          npx vercel whoami --token="$VERCEL_TOKEN" || true
-          npx vercel teams ls --token="$VERCEL_TOKEN" || true
-          npx vercel project ls --scope="$VERCEL_ORG_ID" --token="$VERCEL_TOKEN" || true
       - name: Pull Vercel project settings
         run: npx vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
       - name: Build
