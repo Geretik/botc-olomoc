@@ -54,6 +54,7 @@ export function feedIcsUrl(city?: City) {
 
 export function sessionDescription(s: Session) {
   const parts = [`Blood on the Clocktower – ${s.title}`];
+  if (s.storyteller) parts.push(`🎩 ${s.storyteller}`);
   if (s.note) parts.push(s.note);
   if (s.scripts.length) {
     parts.push(s.scripts.map((x) => `${x.name}: ${x.url}`).join("\n"));

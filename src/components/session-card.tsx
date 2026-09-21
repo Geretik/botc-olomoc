@@ -40,6 +40,13 @@ export function SessionCard({
           <span aria-hidden className="mr-1.5">📍</span>
           {s.place}
         </p>
+        {s.storyteller && (
+          <p className="text-sm">
+            <span aria-hidden className="mr-1.5">🎩</span>
+            <span className="text-muted">{t.session.storytellerLabel}: </span>
+            {s.storyteller}
+          </p>
+        )}
         {s.note && (
           <p className="text-sm text-muted whitespace-pre-line">
             <span aria-hidden className="mr-1.5">📝</span>

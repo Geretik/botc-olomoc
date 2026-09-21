@@ -22,6 +22,8 @@ export const sessions = pgTable("sessions", {
   endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
   place: text("place").notNull(),
   capacity: integer("capacity").notNull(),
+  /** Who runs the game that night – free text, optional */
+  storyteller: text("storyteller"),
   note: text("note"),
   /** Links to scripts played that evening (botcscripts.com, script tool, PDF on a drive, …) */
   scripts: jsonb("scripts").$type<ScriptLink[]>().notNull().default([]),

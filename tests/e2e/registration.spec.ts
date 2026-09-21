@@ -149,6 +149,7 @@ test("admin: login, create/edit session with scripts, manage registrations, dele
   await page.fill("#endsAt", "2030-12-05T23:00");
   await page.fill("#place", "Hospoda U Zvonu");
   await page.fill("#capacity", "10");
+  await page.fill("#storyteller", "Honza");
   await page.fill("input[name=scriptName] >> nth=0", "Trouble Brewing");
   await page.fill("input[name=scriptUrl] >> nth=0", "botcscripts.com/script/Trouble_Brewing/1/");
   await page.click("button:has-text('Vytvořit termín')");
@@ -163,6 +164,8 @@ test("admin: login, create/edit session with scripts, manage registrations, dele
   await page.goto("/");
   await expect(page.getByTestId("edit-pencil")).toHaveCount(1);
   await expect(page.locator("main")).toContainText("Trouble Brewing");
+  await expect(page.locator("main")).toContainText("🎩");
+  await expect(page.locator("main")).toContainText("Vypravěč: Honza");
 
   // register two players, admin sees them, cancels and restores one
   await register(page, s.id, { nick: "P1", email: "p1@example.com" });

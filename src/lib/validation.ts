@@ -50,6 +50,11 @@ export function sessionSchema(t: Dict["admin"]["errors"]) {
     endsAt: z.string().min(1, t.fillEnd),
     place: z.string().trim().min(1, t.fillPlace).max(300),
     capacity: z.coerce.number().int().min(1, t.capacityMin).max(500),
+    storyteller: z
+      .string()
+      .trim()
+      .max(200)
+      .transform((v) => (v === "" ? null : v)),
     note: z
       .string()
       .trim()

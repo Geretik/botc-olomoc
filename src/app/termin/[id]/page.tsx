@@ -82,6 +82,13 @@ export default async function SessionPage({
           <span aria-hidden className="mr-1.5">📍</span>
           {session.place}
         </p>
+        {session.storyteller && (
+          <p className="mt-1">
+            <span aria-hidden className="mr-1.5">🎩</span>
+            <span className="text-muted">{t.session.storytellerLabel}: </span>
+            {session.storyteller}
+          </p>
+        )}
         {session.note && (
           <p className="mt-2 text-muted whitespace-pre-line">
             <span aria-hidden className="mr-1.5">📝</span>

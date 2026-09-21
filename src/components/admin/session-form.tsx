@@ -18,7 +18,7 @@ export function SessionForm({
 }: {
   action: (prev: FormState, fd: FormData) => Promise<FormState>;
   /** Prefilled values – the session being edited, or a template when duplicating */
-  session?: Pick<Session, "title" | "city" | "place" | "capacity" | "note" | "scripts">;
+  session?: Pick<Session, "title" | "city" | "place" | "capacity" | "storyteller" | "note" | "scripts">;
   /** datetime-local strings in Prague time */
   defaults?: { startsAt: string; endsAt: string };
   mode?: "create" | "edit";
@@ -55,6 +55,9 @@ export function SessionForm({
       </Field>
       <Field label={t.capacity} name="capacity" errors={fe.capacity} hint={mode === "edit" ? t.capacityHint : undefined}>
         <input id="capacity" name="capacity" type="number" min={1} max={500} required defaultValue={session?.capacity ?? 15} className={inputClass} />
+      </Field>
+      <Field label={t.storyteller} name="storyteller" errors={fe.storyteller} hint={t.storytellerHint}>
+        <input id="storyteller" name="storyteller" maxLength={200} defaultValue={session?.storyteller ?? ""} className={inputClass} placeholder="🎩 Honza" />
       </Field>
       <Field label={t.note} name="note" errors={fe.note} hint={t.noteHint}>
         <textarea id="note" name="note" rows={3} defaultValue={session?.note ?? ""} className={inputClass} />

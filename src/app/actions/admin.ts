@@ -191,6 +191,7 @@ async function parseSessionForm(formData: FormData) {
       city: parsed.data.city,
       place: parsed.data.place,
       capacity: parsed.data.capacity,
+      storyteller: parsed.data.storyteller,
       note: parsed.data.note,
       startsAt,
       endsAt,

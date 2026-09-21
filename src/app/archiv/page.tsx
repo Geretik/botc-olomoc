@@ -43,6 +43,12 @@ export default async function ArchivePage({ searchParams }: { searchParams: Prom
                   <span aria-hidden className="mr-1.5">📍</span>
                   <span className="text-muted">{s.place}</span>
                 </p>
+                {s.storyteller && (
+                  <p className="text-sm text-muted">
+                    <span aria-hidden className="mr-1.5">🎩</span>
+                    {t.session.storytellerLabel}: {s.storyteller}
+                  </p>
+                )}
                 <ScriptLinks scripts={s.scripts} label={t.session.scripts(s.scripts.length)} />
               </Card>
             </li>

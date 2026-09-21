@@ -31,6 +31,7 @@ const sessionColumns = {
   endsAt: sessions.endsAt,
   place: sessions.place,
   capacity: sessions.capacity,
+  storyteller: sessions.storyteller,
   note: sessions.note,
   scripts: sessions.scripts,
   createdAt: sessions.createdAt,

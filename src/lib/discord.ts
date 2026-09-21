@@ -22,6 +22,7 @@ export async function announceSessionOnDiscord(
     { name: "📍 Kde", value: `${dictionaries.cs.city[s.city]} · ${s.place}`, inline: true },
     { name: "👥 Volná místa", value: `${freeSpots} z ${s.capacity}`, inline: true },
   ];
+  if (s.storyteller) fields.push({ name: "🎩 Vypravěč", value: s.storyteller, inline: true });
   if (s.scripts.length) {
     fields.push({
       name: "📜 Scripty",
