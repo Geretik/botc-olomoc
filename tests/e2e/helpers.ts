@@ -73,7 +73,7 @@ export async function register(
   await page.fill("#lastName", data.last ?? "Testovic");
   await page.fill("#nickname", data.nick);
   await page.fill("#email", data.email);
-  if (data.arrival) await page.fill("#arrivalTime", data.arrival);
+  if (data.arrival) await page.selectOption("#arrivalTime", data.arrival);
   await page.click("main form button[type=submit]");
   await expect(page.getByTestId("register-result")).toBeVisible({ timeout: 15000 });
   return page.locator("main").textContent().then((t) => t ?? "");

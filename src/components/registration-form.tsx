@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { registerAction, type RegisterResult } from "@/app/actions/registration";
 import type { Dict } from "@/i18n/dictionaries";
+import { TimeSelect } from "./time-select";
 import { Alert, Button, Checkbox, Field, inputClass } from "./ui";
 
 export function RegistrationForm({
@@ -71,10 +72,22 @@ export function RegistrationForm({
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t.arrival} name="arrivalTime" errors={fe.arrivalTime} hint={t.arrivalHint}>
-          <input id="arrivalTime" name="arrivalTime" type="time" className={inputClass} placeholder={defaultArrival} />
+          <TimeSelect
+            id="arrivalTime"
+            name="arrivalTime"
+            start={defaultArrival}
+            end={defaultDeparture}
+            defaultLabel={t.arrivalDefault.replace("{t}", defaultArrival)}
+          />
         </Field>
         <Field label={t.departure} name="departureTime" errors={fe.departureTime} hint={t.departureHint}>
-          <input id="departureTime" name="departureTime" type="time" className={inputClass} placeholder={defaultDeparture} />
+          <TimeSelect
+            id="departureTime"
+            name="departureTime"
+            start={defaultArrival}
+            end={defaultDeparture}
+            defaultLabel={t.departureDefault.replace("{t}", defaultDeparture)}
+          />
         </Field>
       </div>
       <Checkbox name="canStorytell" label={t.canStorytell} hint={t.canStorytellHint} />

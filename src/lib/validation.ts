@@ -2,7 +2,7 @@ import { z } from "zod";
 import { adminRoles, cities } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import { PASSWORD_MIN_LENGTH } from "./password";
-import { TIME_RE } from "./time";
+import { formatTime, TIME_RE } from "./time";
 
 export function registrationSchema(t: Dict["errors"]) {
   const optionalTime = z
@@ -111,6 +111,36 @@ export const inviteSchema = z.object({
     .max(200)
     .transform((v) => (v === "" ? null : v)),
 });
+
+/**
+ * Arrival must be inside the session, departure too, and departure after arrival.
+ * Times are "HH:MM" in Prague; a session may cross midnight.
+ */
+export function timeRangeErrors(
+  times: { arrivalTime: string | null; departureTime: string | null },
+  session: { startsAt: Date; endsAt: Date },
+  t: Dict["errors"],
+): Record<string, string[]> | null {
+  const toMin = (hhmm: string) => {
+    const [h, m] = hhmm.split(":").map(Number);
+    return h * 60 + m;
+  };
+  const start = toMin(formatTime(session.startsAt));
+  let end = toMin(formatTime(session.endsAt));
+  if (end <= start) end += 1440;
+  // shift a time before the start onto the next day when the session crosses midnight
+  const norm = (hhmm: string) => {
+    const v = toMin(hhmm);
+    return v < start && end > 1440 ? v + 1440 : v;
+  };
+  const errors: Record<string, string[]> = {};
+  const a = times.arrivalTime ? norm(times.arrivalTime) : start;
+  const d = times.departureTime ? norm(times.departureTime) : end;
+  if (times.arrivalTime && (a < start || a >= end)) errors.arrivalTime = [t.timeOutOfRange];
+  if (times.departureTime && (d <= start || d > end)) errors.departureTime = [t.timeOutOfRange];
+  if (!errors.arrivalTime && !errors.departureTime && d <= a) errors.departureTime = [t.departureBeforeArrival];
+  return Object.keys(errors).length ? errors : null;
+}
 
 export type FormState = {
   ok?: boolean;

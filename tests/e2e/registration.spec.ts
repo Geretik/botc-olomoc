@@ -50,7 +50,9 @@ test("registration, duplicate handling, edit, cancel and re-registration", async
   expect(reg.arrival_time).toBe("19:30");
   await page.goto(`/r/${reg.edit_token}`);
   await page.fill("#nickname", "Anička");
-  await page.fill("#departureTime", "22:00");
+  await page.selectOption("#departureTime", "22:00");
+  // only times inside the session (19:00–23:00) are offered
+  expect(await page.locator("#arrivalTime option").allTextContents()).toEqual(["Od začátku (19:00)", "19:15", "19:30", "19:45", "20:00", "20:15", "20:30", "20:45", "21:00", "21:15", "21:30", "21:45", "22:00", "22:15", "22:30", "22:45"]);
   await page.click("button:has-text('Uložit změny')");
   await expect(page.locator("main")).toContainText("Změny uloženy");
   const [after] = await sql<{ nickname: string; departure_time: string }>(

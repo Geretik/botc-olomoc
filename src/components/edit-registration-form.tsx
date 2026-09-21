@@ -8,6 +8,7 @@ import {
 import type { Registration } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import type { FormState } from "@/lib/validation";
+import { TimeSelect } from "./time-select";
 import { Alert, Button, Checkbox, Field, inputClass } from "./ui";
 
 export function EditRegistrationForm({
@@ -63,11 +64,25 @@ export function EditRegistrationForm({
           <input id="email" value={r.email} disabled className={`${inputClass} opacity-60`} />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t.arrival} name="arrivalTime" errors={fe.arrivalTime} hint={t.emptyMeansPrefix + defaultArrival}>
-            <input id="arrivalTime" name="arrivalTime" type="time" defaultValue={r.arrivalTime ?? ""} className={inputClass} />
+          <Field label={t.arrival} name="arrivalTime" errors={fe.arrivalTime}>
+            <TimeSelect
+              id="arrivalTime"
+              name="arrivalTime"
+              start={defaultArrival}
+              end={defaultDeparture}
+              defaultValue={r.arrivalTime}
+              defaultLabel={t.arrivalDefault.replace("{t}", defaultArrival)}
+            />
           </Field>
-          <Field label={t.departure} name="departureTime" errors={fe.departureTime} hint={t.emptyMeansPrefix + defaultDeparture}>
-            <input id="departureTime" name="departureTime" type="time" defaultValue={r.departureTime ?? ""} className={inputClass} />
+          <Field label={t.departure} name="departureTime" errors={fe.departureTime}>
+            <TimeSelect
+              id="departureTime"
+              name="departureTime"
+              start={defaultArrival}
+              end={defaultDeparture}
+              defaultValue={r.departureTime}
+              defaultLabel={t.departureDefault.replace("{t}", defaultDeparture)}
+            />
           </Field>
         </div>
         <Checkbox name="canStorytell" label={t.canStorytell} hint={t.canStorytellHint} defaultChecked={r.canStorytell} />

@@ -13,8 +13,10 @@ import {
   fieldErrorsOf,
   registrationEditSchema,
   registrationSchema,
+  timeRangeErrors,
   type FormState,
 } from "@/lib/validation";
+import { getRegistrationByToken } from "@/lib/queries";
 import { promoteWaitlist } from "@/lib/waitlist";
 import { getDict } from "@/i18n/server";
 
@@ -60,6 +62,11 @@ export async function registerAction(
   if (data.website) {
     // honeypot hit – pretend success
     return { ok: true, outcome: "created" };
+  }
+  {
+    const s = await db.query.sessions.findFirst({ where: eq(sessions.id, sessionId) });
+    const timeErrors = s && timeRangeErrors(data, s, t.errors);
+    if (timeErrors) return { error: t.errors.checkForm, fieldErrors: timeErrors };
   }
 
   try {
@@ -207,6 +214,9 @@ export async function updateRegistrationAction(
   if (!parsed.success) {
     return { error: t.errors.checkForm, fieldErrors: fieldErrorsOf(parsed.error) };
   }
+  const current = await getRegistrationByToken(token);
+  const timeErrors = current && timeRangeErrors(parsed.data, current.session, t.errors);
+  if (timeErrors) return { error: t.errors.checkForm, fieldErrors: timeErrors };
   // Editing never sends e-mail.
   const [updated] = await db
     .update(registrations)
