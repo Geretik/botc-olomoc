@@ -13,9 +13,15 @@ function escapeHtml(s: string) {
     .replaceAll('"', "&quot;");
 }
 
+/** EMAIL_FROM as configured, with stray wrapping quotes removed (a common paste mistake in dashboards). */
+function fromAddress() {
+  const raw = (process.env.EMAIL_FROM ?? "").trim().replace(/^["']+|["']+$/g, "").trim();
+  return raw || undefined;
+}
+
 async function send(to: string, subject: string, html: string, text: string) {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM;
+  const from = fromAddress();
   if (!apiKey || !from) {
     console.log(`[email → ${to}] ${subject}\n${text}`);
     return;

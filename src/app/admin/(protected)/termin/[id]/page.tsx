@@ -15,7 +15,7 @@ import { AttendanceToggle } from "@/components/admin/attendance-toggle";
 import { BroadcastForm } from "@/components/admin/broadcast-form";
 import { DeleteSessionButton } from "@/components/admin/delete-session-button";
 import { SessionForm } from "@/components/admin/session-form";
-import { Button, Card } from "@/components/ui";
+import { Alert, Button, Card } from "@/components/ui";
 import type { Registration } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import { getDict } from "@/i18n/server";
@@ -30,6 +30,9 @@ function Flags({ r, t }: { r: Registration; t: Dict["admin"]["session"] }) {
     <>
       {r.canStorytell && <span title={t.storyteller} aria-label={t.storyteller}> 🎩</span>}
       {r.isNewbie && <span title={t.newbie} aria-label={t.newbie}> 🌱</span>}
+      {r.status !== "cancelled" && !r.confirmationSentAt && (
+        <span title={t.noConfirmation} aria-label={t.noConfirmation}> ⚠️</span>
+      )}
     </>
   );
 }
@@ -61,6 +64,7 @@ export default async function AdminSessionPage({
   const newbies = confirmed.filter((r) => r.isNewbie).length;
   const attended = confirmed.filter((r) => r.attended === true).length;
   const noShow = confirmed.filter((r) => r.attended === false).length;
+  const unconfirmed = confirmed.filter((r) => !r.confirmationSentAt).length;
 
   return (
     <div className="flex flex-col gap-8">
@@ -122,6 +126,7 @@ export default async function AdminSessionPage({
           {t.summary(storytellers, newbies)}
           {(attended > 0 || noShow > 0) && t.attendanceSummary(attended, noShow)}
         </p>
+        {unconfirmed > 0 && <Alert kind="error">{t.noConfirmationCount(unconfirmed)}</Alert>}
         {confirmed.length === 0 && <p className="text-muted">{t.nobody}</p>}
         {confirmed.length > 0 && (
           <div className="overflow-x-auto rounded-xl border border-border bg-card">
