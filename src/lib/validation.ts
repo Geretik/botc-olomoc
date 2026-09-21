@@ -28,28 +28,32 @@ const checkbox = z
   .optional()
   .transform((v) => v === "on" || v === "true" || v === "1");
 
-export const broadcastSchema = z.object({
-  subject: z.string().trim().min(1, "Vyplň předmět").max(200),
-  message: z.string().trim().min(1, "Napiš zprávu").max(5000),
-  includeWaitlist: checkbox,
-});
+export function broadcastSchema(t: Dict["admin"]["errors"]) {
+  return z.object({
+    subject: z.string().trim().min(1, t.fillSubject).max(200),
+    message: z.string().trim().min(1, t.writeMessage).max(5000),
+    includeWaitlist: checkbox,
+  });
+}
 
 export function registrationEditSchema(t: Dict["errors"]) {
   return registrationSchema(t).omit({ email: true, website: true });
 }
 
-export const sessionSchema = z.object({
-  title: z.string().trim().min(1, "Vyplň název").max(200),
-  startsAt: z.string().min(1, "Vyplň začátek"),
-  endsAt: z.string().min(1, "Vyplň konec"),
-  place: z.string().trim().min(1, "Vyplň místo").max(300),
-  capacity: z.coerce.number().int().min(1, "Kapacita musí být alespoň 1").max(500),
-  note: z
-    .string()
-    .trim()
-    .max(2000)
-    .transform((v) => (v === "" ? null : v)),
-});
+export function sessionSchema(t: Dict["admin"]["errors"]) {
+  return z.object({
+    title: z.string().trim().min(1, t.fillTitle).max(200),
+    startsAt: z.string().min(1, t.fillStart),
+    endsAt: z.string().min(1, t.fillEnd),
+    place: z.string().trim().min(1, t.fillPlace).max(300),
+    capacity: z.coerce.number().int().min(1, t.capacityMin).max(500),
+    note: z
+      .string()
+      .trim()
+      .max(2000)
+      .transform((v) => (v === "" ? null : v)),
+  });
+}
 
 const scriptLinkSchema = z.object({
   name: z.string().trim().min(1).max(200),
@@ -58,11 +62,11 @@ const scriptLinkSchema = z.object({
     .trim()
     // "botcscripts.com/…" → "https://botcscripts.com/…"
     .transform((u) => (/^[a-z][a-z0-9+.-]*:\/\//i.test(u) ? u : `https://${u}`))
-    .pipe(z.string().url("Zadej platnou adresu (https://…)").max(2000)),
+    .pipe(z.string().url().max(2000)),
 });
 
 /** Reads scriptName[] / scriptUrl[] pairs from a FormData, ignoring fully empty rows. */
-export function parseScripts(formData: FormData) {
+export function parseScripts(formData: FormData, t: Dict["admin"]["errors"]) {
   const names = formData.getAll("scriptName").map(String);
   const urls = formData.getAll("scriptUrl").map(String);
   const rows = names.map((name, i) => ({ name, url: urls[i] ?? "" }));
@@ -73,9 +77,7 @@ export function parseScripts(formData: FormData) {
   if (!result.success) {
     const bad = result.error.issues.map((i) => Number(i.path[0]) + 1);
     return {
-      error: [
-        `Script č. ${[...new Set(bad)].join(", ")} nemá platnou webovou adresu (např. https://botcscripts.com/…).`,
-      ],
+      error: [t.scriptUrl([...new Set(bad)].join(", "))],
     };
   }
   return { scripts: result.data };

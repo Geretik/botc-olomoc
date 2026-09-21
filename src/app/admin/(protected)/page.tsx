@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { Card } from "@/components/ui";
+import { getDict } from "@/i18n/server";
 import { listAllSessions } from "@/lib/queries";
 import { formatDate, formatTime } from "@/lib/time";
 
 export default async function AdminHomePage() {
-  const sessions = await listAllSessions();
+  const [{ locale, t }, sessions] = await Promise.all([getDict(), listAllSessions()]);
+  const a = t.admin.list;
   const now = new Date();
   const upcoming = sessions.filter((s) => s.endsAt >= now);
   const past = sessions.filter((s) => s.endsAt < now).reverse();
@@ -15,12 +17,12 @@ export default async function AdminHomePage() {
         <div>
           <p className="font-semibold">{s.title}</p>
           <p className="text-sm text-muted">
-            <span>{formatDate(s.startsAt)}</span>, {formatTime(s.startsAt)}–{formatTime(s.endsAt)} · {s.place}
+            <span>{formatDate(s.startsAt, locale)}</span>, {formatTime(s.startsAt, locale)}–{formatTime(s.endsAt, locale)} · {s.place}
           </p>
         </div>
         <p className="text-sm font-medium">
           {s.confirmedCount} / {s.capacity}
-          {s.waitlistedCount > 0 && <span className="ml-2 text-xs text-muted">+{s.waitlistedCount} náhr.</span>}
+          {s.waitlistedCount > 0 && <span className="ml-2 text-xs text-muted">{a.waitlistShort(s.waitlistedCount)}</span>}
         </p>
       </Card>
     </Link>
@@ -29,13 +31,15 @@ export default async function AdminHomePage() {
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-3">
-        <h1 className="text-2xl font-bold">Nadcházející termíny</h1>
-        {upcoming.length === 0 && <p className="text-muted">Žádné. <Link href="/admin/novy" className="underline">Vypsat nový</Link>.</p>}
+        <h1 className="text-2xl font-bold">{a.upcoming}</h1>
+        {upcoming.length === 0 && (
+          <p className="text-muted">{a.none}<Link href="/admin/novy" className="underline">{a.createNew}</Link>.</p>
+        )}
         {upcoming.map((s) => <Row key={s.id} s={s} />)}
       </section>
       {past.length > 0 && (
         <section className="flex flex-col gap-3">
-          <h2 className="text-xl font-bold text-muted">Proběhlé</h2>
+          <h2 className="text-xl font-bold text-muted">{a.past}</h2>
           {past.map((s) => <Row key={s.id} s={s} />)}
         </section>
       )}

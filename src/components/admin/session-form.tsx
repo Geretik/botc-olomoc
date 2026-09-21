@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import type { Session } from "@/db/schema";
+import type { Dict } from "@/i18n/dictionaries";
 import type { FormState } from "@/lib/validation";
 import { Alert, Button, Checkbox, Field, inputClass } from "../ui";
 import { ScriptsFields } from "./scripts-fields";
@@ -12,6 +13,7 @@ export function SessionForm({
   defaults,
   mode = session ? "edit" : "create",
   discordConfigured = false,
+  t,
 }: {
   action: (prev: FormState, fd: FormData) => Promise<FormState>;
   /** Prefilled values – the session being edited, or a template when duplicating */
@@ -20,39 +22,40 @@ export function SessionForm({
   defaults?: { startsAt: string; endsAt: string };
   mode?: "create" | "edit";
   discordConfigured?: boolean;
+  t: Dict["admin"]["form"];
 }) {
   const [state, action, pending] = useActionState<FormState, FormData>(serverAction, {});
   const fe = state.fieldErrors ?? {};
   return (
     <form action={action} className="flex flex-col gap-4">
       {state.error && <Alert kind="error">{state.error}</Alert>}
-      {state.ok && <Alert kind="success">Uloženo.</Alert>}
-      <Field label="Název" name="title" errors={fe.title}>
-        <input id="title" name="title" required defaultValue={session?.title ?? ""} className={inputClass} placeholder="Herní večer #12" />
+      {state.ok && <Alert kind="success">{t.saved}</Alert>}
+      <Field label={t.title} name="title" errors={fe.title}>
+        <input id="title" name="title" required defaultValue={session?.title ?? ""} className={inputClass} placeholder={t.titlePlaceholder} />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Začátek" name="startsAt" errors={fe.startsAt}>
+        <Field label={t.startsAt} name="startsAt" errors={fe.startsAt}>
           <input id="startsAt" name="startsAt" type="datetime-local" required defaultValue={defaults?.startsAt ?? ""} className={inputClass} />
         </Field>
-        <Field label="Konec" name="endsAt" errors={fe.endsAt}>
+        <Field label={t.endsAt} name="endsAt" errors={fe.endsAt}>
           <input id="endsAt" name="endsAt" type="datetime-local" required defaultValue={defaults?.endsAt ?? ""} className={inputClass} />
         </Field>
       </div>
-      <Field label="Místo" name="place" errors={fe.place}>
+      <Field label={t.place} name="place" errors={fe.place}>
         <input id="place" name="place" required defaultValue={session?.place ?? ""} className={inputClass} />
       </Field>
-      <Field label="Kapacita" name="capacity" errors={fe.capacity} hint={mode === "edit" ? "Při zvýšení kapacity se náhradníci automaticky posunou mezi přihlášené a dostanou e-mail." : undefined}>
+      <Field label={t.capacity} name="capacity" errors={fe.capacity} hint={mode === "edit" ? t.capacityHint : undefined}>
         <input id="capacity" name="capacity" type="number" min={1} max={500} required defaultValue={session?.capacity ?? 15} className={inputClass} />
       </Field>
-      <Field label="Poznámka" name="note" errors={fe.note} hint="Volitelné, např. scénář nebo co přinést.">
+      <Field label={t.note} name="note" errors={fe.note} hint={t.noteHint}>
         <textarea id="note" name="note" rows={3} defaultValue={session?.note ?? ""} className={inputClass} />
       </Field>
-      <ScriptsFields initial={session?.scripts ?? []} errors={fe.scripts} />
+      <ScriptsFields initial={session?.scripts ?? []} errors={fe.scripts} t={t} />
       {mode === "create" && discordConfigured && (
-        <Checkbox name="announceDiscord" label="Oznámit nový termín na Discordu" hint="Pošle zprávu přes nastavený webhook." defaultChecked />
+        <Checkbox name="announceDiscord" label={t.announceDiscord} hint={t.announceDiscordHint} defaultChecked />
       )}
       <Button type="submit" disabled={pending}>
-        {pending ? "Ukládám…" : mode === "edit" ? "Uložit změny" : "Vytvořit termín"}
+        {pending ? t.saving : mode === "edit" ? t.saveChanges : t.create}
       </Button>
     </form>
   );

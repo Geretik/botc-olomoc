@@ -1,7 +1,15 @@
 import { setAttendanceAction } from "@/app/actions/admin";
 
 /** Three-state attendance marker: came / no-show / not marked. */
-export function AttendanceToggle({ registrationId, attended }: { registrationId: number; attended: boolean | null }) {
+export function AttendanceToggle({
+  registrationId,
+  attended,
+  labels,
+}: {
+  registrationId: number;
+  attended: boolean | null;
+  labels: { came: string; noShow: string };
+}) {
   const btn = (value: boolean | null, label: string, title: string, active: boolean, activeCls: string) => (
     <form action={setAttendanceAction.bind(null, registrationId, value)} className="inline">
       <button
@@ -17,8 +25,8 @@ export function AttendanceToggle({ registrationId, attended }: { registrationId:
   );
   return (
     <span className="inline-flex gap-1">
-      {btn(attended === true ? null : true, "✓", "Dorazil/a", attended === true, "border-green-600 bg-green-600/15 text-green-700 dark:text-green-400")}
-      {btn(attended === false ? null : false, "✗", "Nedorazil/a", attended === false, "border-accent bg-accent/15 text-accent")}
+      {btn(attended === true ? null : true, "✓", labels.came, attended === true, "border-green-600 bg-green-600/15 text-green-700 dark:text-green-400")}
+      {btn(attended === false ? null : false, "✗", labels.noShow, attended === false, "border-accent bg-accent/15 text-accent")}
     </span>
   );
 }

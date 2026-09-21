@@ -242,3 +242,32 @@ test("open graph metadata on session page", async ({ page }) => {
   await expect(page.locator('meta[property="og:description"]')).toHaveAttribute("content", /Klubovna/);
   await expect(page.locator('meta[property="og:image"]')).toHaveCount(1);
 });
+
+test("admin is available in English after switching the language", async ({ page }) => {
+  const id = await createSession({ title: "English night", capacity: 3 });
+  await register(page, id, { nick: "Anna", email: "anna@example.com" });
+  await adminLogin(page);
+
+  // the header language switch sets the cookie shared with the public site
+  await page.click("header button:has-text('English')");
+  await expect(page.locator("main h1")).toHaveText("Upcoming sessions");
+  await expect(page.locator("main nav")).toContainText("Statistics");
+
+  await page.goto(`/admin/termin/${id}`);
+  await expect(page.locator("main")).toContainText("Signed up (1 / 3)");
+  await expect(page.locator("main")).toContainText("Edit session");
+  await page.click("button:has-text('Save changes')");
+  await expect(page.locator("main")).toContainText("Saved.");
+
+  // server-side validation messages come from the English dictionary too
+  await page.fill("#endsAt", "2020-01-01T10:00");
+  await page.click("button:has-text('Save changes')");
+  await expect(page.locator("main")).toContainText("The end must be after the start");
+
+  await page.goto("/admin/statistiky");
+  await expect(page.locator("h1")).toHaveText("Statistics");
+
+  // and back to Czech
+  await page.click("header button:has-text('Česky')");
+  await expect(page.locator("h1")).toHaveText("Statistiky");
+});

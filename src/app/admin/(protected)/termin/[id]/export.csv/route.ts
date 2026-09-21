@@ -1,51 +1,49 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { sessions } from "@/db/schema";
+import type { Dict } from "@/i18n/dictionaries";
+import { getDict } from "@/i18n/server";
 import { isAdmin } from "@/lib/admin-auth";
 import { listRegistrationsForSession } from "@/lib/queries";
 import { formatTime } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
-function cell(v: string | number | boolean | null | undefined) {
+function cell(v: string | number | boolean | null | undefined, t: Dict["admin"]["csv"]) {
   if (v === null || v === undefined) return "";
-  const s = typeof v === "boolean" ? (v ? "ano" : "ne") : String(v);
+  const s = typeof v === "boolean" ? (v ? t.yes : t.no) : String(v);
   return /[";\n\r]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s;
 }
-
-const STATUS: Record<string, string> = {
-  confirmed: "přihlášen",
-  waitlisted: "náhradník",
-  cancelled: "odhlášen",
-};
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!(await isAdmin())) return new Response("Unauthorized", { status: 401 });
   const { id } = await params;
   const numId = Number(id);
   if (!Number.isInteger(numId)) return new Response("Not found", { status: 404 });
-  const [session, regs] = await Promise.all([
+  const [{ locale, t: dict }, session, regs] = await Promise.all([
+    getDict(),
     db.query.sessions.findFirst({ where: eq(sessions.id, numId) }),
     listRegistrationsForSession(numId),
   ]);
   if (!session) return new Response("Not found", { status: 404 });
+  const t = dict.admin.csv;
 
-  const header = ["Jméno", "Příjmení", "Přezdívka", "E-mail", "Stav", "Příchod", "Odchod", "Vypravěč", "Nováček", "Dorazil", "Registrace"];
+  const header = t.header;
   const rows = regs.map((r) => [
     r.firstName,
     r.lastName,
     r.nickname,
     r.email,
-    STATUS[r.status] ?? r.status,
-    r.arrivalTime ?? formatTime(session.startsAt),
-    r.departureTime ?? formatTime(session.endsAt),
+    t.status[r.status] ?? r.status,
+    r.arrivalTime ?? formatTime(session.startsAt, locale),
+    r.departureTime ?? formatTime(session.endsAt, locale),
     r.canStorytell,
     r.isNewbie,
     r.attended === null ? "" : r.attended,
     r.createdAt.toISOString(),
   ]);
   // semicolon-separated + BOM so Czech Excel opens it correctly
-  const csv = "﻿" + [header, ...rows].map((row) => row.map(cell).join(";")).join("\r\n") + "\r\n";
+  const csv = "﻿" + [header, ...rows].map((row) => row.map((v) => cell(v, t)).join(";")).join("\r\n") + "\r\n";
   // header values must be ASCII: strip diacritics, keep letters/digits
   const safeTitle = session.title
     .normalize("NFD")

@@ -14,6 +14,7 @@ import {
 import { announceSessionOnDiscord } from "@/lib/discord";
 import { sendBroadcastEmail } from "@/lib/email";
 import { sendDueReminders } from "@/lib/reminders";
+import { getDict } from "@/i18n/server";
 import { pragueLocalToDate } from "@/lib/time";
 import {
   broadcastSchema,
@@ -34,7 +35,8 @@ export async function loginAction(
 ): Promise<FormState> {
   const password = String(formData.get("password") ?? "");
   if (!checkPassword(password)) {
-    return { error: "Nesprávné heslo." };
+    const { t } = await getDict();
+    return { error: t.admin.errors.wrongPassword };
   }
   await setAdminCookie();
   redirect("/admin");
@@ -45,18 +47,20 @@ export async function logoutAction() {
   redirect("/");
 }
 
-function parseSessionForm(formData: FormData) {
-  const parsed = sessionSchema.safeParse(Object.fromEntries(formData.entries()));
+async function parseSessionForm(formData: FormData) {
+  const { t } = await getDict();
+  const e = t.admin.errors;
+  const parsed = sessionSchema(e).safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) {
-    return { error: fieldErrorsOf(parsed.error) };
+    return { error: fieldErrorsOf(parsed.error), message: e.checkForm };
   }
   const startsAt = pragueLocalToDate(parsed.data.startsAt);
   const endsAt = pragueLocalToDate(parsed.data.endsAt);
-  if (!startsAt) return { error: { startsAt: ["Neplatný začátek"] } };
-  if (!endsAt) return { error: { endsAt: ["Neplatný konec"] } };
-  if (endsAt <= startsAt) return { error: { endsAt: ["Konec musí být po začátku"] } };
-  const scripts = parseScripts(formData);
-  if (scripts.error) return { error: { scripts: scripts.error } };
+  if (!startsAt) return { error: { startsAt: [e.invalidStart] }, message: e.checkForm };
+  if (!endsAt) return { error: { endsAt: [e.invalidEnd] }, message: e.checkForm };
+  if (endsAt <= startsAt) return { error: { endsAt: [e.endAfterStart] }, message: e.checkForm };
+  const scripts = parseScripts(formData, e);
+  if (scripts.error) return { error: { scripts: scripts.error }, message: e.checkForm };
   return {
     values: {
       scripts: scripts.scripts,
@@ -75,8 +79,8 @@ export async function createSessionAction(
   formData: FormData,
 ): Promise<FormState> {
   await requireAdmin();
-  const r = parseSessionForm(formData);
-  if (r.error) return { error: "Zkontroluj formulář.", fieldErrors: r.error };
+  const r = await parseSessionForm(formData);
+  if (r.error) return { error: r.message, fieldErrors: r.error };
   const [created] = await db.insert(sessions).values(r.values).returning();
   if (formData.get("announceDiscord") === "on") {
     await announceSessionOnDiscord(created, created.capacity);
@@ -91,8 +95,8 @@ export async function updateSessionAction(
   formData: FormData,
 ): Promise<FormState> {
   await requireAdmin();
-  const r = parseSessionForm(formData);
-  if (r.error) return { error: "Zkontroluj formulář.", fieldErrors: r.error };
+  const r = await parseSessionForm(formData);
+  if (r.error) return { error: r.message, fieldErrors: r.error };
   await db.update(sessions).set(r.values).where(eq(sessions.id, id));
   // a bigger capacity may make room for waitlisted players
   await promoteWaitlist(id);
@@ -192,12 +196,13 @@ export async function broadcastEmailAction(
   formData: FormData,
 ): Promise<BroadcastResult> {
   await requireAdmin();
-  const parsed = broadcastSchema.safeParse(Object.fromEntries(formData.entries()));
+  const { t } = await getDict();
+  const parsed = broadcastSchema(t.admin.errors).safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) {
-    return { error: "Zkontroluj formulář.", fieldErrors: fieldErrorsOf(parsed.error) };
+    return { error: t.admin.errors.checkForm, fieldErrors: fieldErrorsOf(parsed.error) };
   }
   const session = await db.query.sessions.findFirst({ where: eq(sessions.id, sessionId) });
-  if (!session) return { error: "Termín neexistuje." };
+  if (!session) return { error: t.admin.errors.noSession };
   const statuses: ("confirmed" | "waitlisted")[] = parsed.data.includeWaitlist
     ? ["confirmed", "waitlisted"]
     : ["confirmed"];
@@ -228,19 +233,18 @@ export type SimpleResult = { ok?: boolean; message?: string };
 
 export async function sendRemindersNowAction(sessionId: number): Promise<SimpleResult> {
   await requireAdmin();
+  const { t } = await getDict();
   const r = await sendDueReminders({ sessionId, ignoreWindow: true });
   revalidatePath(`/admin/termin/${sessionId}`);
-  if (r.due === 0) return { ok: true, message: "Všichni přihlášení už připomínku dostali." };
-  return {
-    ok: r.failed === 0,
-    message: `Připomínka odeslána ${r.sent}× ${r.failed ? `, ${r.failed}× selhala` : ""}.`.replace(" ,", ","),
-  };
+  if (r.due === 0) return { ok: true, message: t.admin.errors.remindersAllSent };
+  return { ok: r.failed === 0, message: t.admin.errors.remindersSent(r.sent, r.failed) };
 }
 
 export async function announceDiscordAction(sessionId: number): Promise<SimpleResult> {
   await requireAdmin();
+  const { t } = await getDict();
   const session = await db.query.sessions.findFirst({ where: eq(sessions.id, sessionId) });
-  if (!session) return { message: "Termín neexistuje." };
+  if (!session) return { message: t.admin.errors.noSession };
   const [{ c }] = await db
     .select({ c: sql<number>`count(*)::int` })
     .from(registrations)
@@ -249,9 +253,9 @@ export async function announceDiscordAction(sessionId: number): Promise<SimpleRe
   return {
     ok: result === "sent",
     message: {
-      sent: "Oznámení odesláno na Discord.",
-      not_configured: "Discord není nastavený (chybí DISCORD_WEBHOOK_URL).",
-      failed: "Odeslání na Discord selhalo, podívej se do logu.",
+      sent: t.admin.errors.discordSent,
+      not_configured: t.admin.errors.discordNotConfigured,
+      failed: t.admin.errors.discordFailed,
     }[result],
   };
 }

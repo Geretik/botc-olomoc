@@ -13,7 +13,7 @@ registraci upravit nebo zrušit.
 
 ## Funkce
 
-- Dvojjazyčné rozhraní **česky / English** (přepínač v hlavičce, volba se ukládá do cookie, e-maily chodí v jazyce hráče)
+- Dvojjazyčné rozhraní **česky / English** včetně adminu (přepínač v hlavičce, volba se ukládá do cookie, e-maily chodí v jazyce hráče)
 
 - `/` – seznam nadcházejících termínů s počtem volných míst a náhradníků
 - `/termin/[id]` – detail termínu a registrační formulář (jméno, příjmení, přezdívka, e-mail, volitelný příchod/odchod, „můžu dělat vypravěče“, „jsem nováček“)

@@ -2,17 +2,23 @@
 
 import { Button } from "../ui";
 
-export function DeleteSessionButton({ action }: { action: () => Promise<void> }) {
+export function DeleteSessionButton({
+  action,
+  label,
+  confirmText,
+}: {
+  action: () => Promise<void>;
+  label: string;
+  confirmText: string;
+}) {
   return (
     <form
       action={action}
       onSubmit={(e) => {
-        if (!confirm("Smazat termín včetně všech registrací? Tuto akci nelze vrátit.")) {
-          e.preventDefault();
-        }
+        if (!confirm(confirmText)) e.preventDefault();
       }}
     >
-      <Button type="submit" variant="danger">Smazat termín</Button>
+      <Button type="submit" variant="danger">{label}</Button>
     </form>
   );
 }

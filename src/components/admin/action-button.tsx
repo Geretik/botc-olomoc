@@ -8,7 +8,7 @@ import { Button } from "../ui";
 export function ActionButton({
   action,
   label,
-  pendingLabel = "Pracuji…",
+  pendingLabel = "…",
   confirmText,
   variant = "secondary",
 }: {

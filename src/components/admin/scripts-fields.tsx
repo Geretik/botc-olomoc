@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ScriptLink } from "@/db/schema";
+import type { Dict } from "@/i18n/dictionaries";
 import { Button, inputClass } from "../ui";
 
 type Row = ScriptLink & { key: number };
@@ -9,9 +10,11 @@ type Row = ScriptLink & { key: number };
 export function ScriptsFields({
   initial,
   errors,
+  t,
 }: {
   initial: ScriptLink[];
   errors?: string[];
+  t: Dict["admin"]["form"];
 }) {
   const [rows, setRows] = useState<Row[]>(() =>
     (initial.length ? initial : [{ name: "", url: "" }]).map((r, i) => ({ ...r, key: i })),
@@ -20,19 +23,16 @@ export function ScriptsFields({
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-sm font-medium">Scripty</p>
-      <p className="text-xs text-muted">
-        Odkazy na scripty, které se budou hrát (botcscripts.com, script tool, PDF na disku…).
-        Zobrazí se hráčům u termínu.
-      </p>
+      <p className="text-sm font-medium">{t.scripts}</p>
+      <p className="text-xs text-muted">{t.scriptsHint}</p>
       {rows.map((row, i) => (
         <div key={row.key} className="grid gap-2 sm:grid-cols-[1fr_2fr_auto]">
           <input
             name="scriptName"
             defaultValue={row.name}
-            placeholder="Název, např. Trouble Brewing"
+            placeholder={t.scriptNamePlaceholder}
             className={inputClass}
-            aria-label={`Název scriptu ${i + 1}`}
+            aria-label={t.scriptNameLabel.replace("{n}", String(i + 1))}
           />
           <input
             name="scriptUrl"
@@ -41,13 +41,13 @@ export function ScriptsFields({
             defaultValue={row.url}
             placeholder="https://…"
             className={`${inputClass} ${errors?.length ? "border-accent" : ""}`}
-            aria-label={`Odkaz na script ${i + 1}`}
+            aria-label={t.scriptUrlLabel.replace("{n}", String(i + 1))}
           />
           <Button
             type="button"
             variant="secondary"
             onClick={() => setRows((r) => r.filter((x) => x.key !== row.key))}
-            aria-label="Odebrat script"
+            aria-label={t.removeScript}
           >
             ✕
           </Button>
@@ -65,7 +65,7 @@ export function ScriptsFields({
             setNextKey((k) => k + 1);
           }}
         >
-          + Přidat script
+          {t.addScript}
         </Button>
       </div>
     </div>
