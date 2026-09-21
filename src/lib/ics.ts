@@ -63,7 +63,7 @@ export function sessionDescription(s: Session) {
   return parts.join("\n\n");
 }
 
-function vevent(s: Session, now: Date) {
+function vevent(s: Session, now: Date, describe: (s: Session) => string) {
   return [
     "BEGIN:VEVENT",
     `UID:session-${s.id}@${host()}`,
@@ -72,13 +72,18 @@ function vevent(s: Session, now: Date) {
     `DTEND:${utcStamp(s.endsAt)}`,
     `SUMMARY:${esc(`BotC: ${s.title}`)}`,
     `LOCATION:${esc(s.place)}`,
-    `DESCRIPTION:${esc(sessionDescription(s))}`,
+    `DESCRIPTION:${esc(describe(s))}`,
     `URL:${sessionUrl(s.id)}`,
     "END:VEVENT",
   ];
 }
 
-export function buildIcs(list: Session[], calendarName: string, now = new Date()) {
+export function buildIcs(
+  list: Session[],
+  calendarName: string,
+  now = new Date(),
+  describe: (s: Session) => string = sessionDescription,
+) {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -87,7 +92,7 @@ export function buildIcs(list: Session[], calendarName: string, now = new Date()
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${esc(calendarName)}`,
     "X-WR-TIMEZONE:Europe/Prague",
-    ...list.flatMap((s) => vevent(s, now)),
+    ...list.flatMap((s) => vevent(s, now, describe)),
     "END:VCALENDAR",
   ];
   return lines.map(fold).join("\r\n") + "\r\n";

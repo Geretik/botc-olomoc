@@ -60,10 +60,12 @@ test("registration, duplicate handling, edit, cancel and re-registration", async
   );
   expect(after).toEqual({ nickname: "Anička", departure_time: "22:00" });
 
-  // cancel frees the spot
-  page.on("dialog", (d) => d.accept());
+  // cancel frees the spot (inline confirmation panel with an optional reason)
   await page.click("button:has-text('Zrušit registraci')");
+  await page.fill("#cancelReason", "nemoc");
+  await page.click("button:has-text('Ano, zrušit registraci')");
   await expect(page.locator("main")).toContainText("Registrace byla zrušena");
+  expect(await sql("select cancel_reason from registrations where email='anna@example.com'")).toEqual([{ cancel_reason: "nemoc" }]);
   await page.goto("/");
   await expect(page.locator("main")).toContainText("1 volné místo z 2");
 

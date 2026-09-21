@@ -19,6 +19,7 @@ const env = {
   RESEND_API_KEY: "", // e-mails are only logged
   CRON_SECRET: "e2e-cron",
   DISCORD_WEBHOOK_URL: "",
+  REGISTRATION_RATE_LIMIT: "1000", // tests sign up many times from one IP
   PORT: String(WEB_PORT),
 };
 

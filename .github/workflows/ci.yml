@@ -19,6 +19,7 @@ jobs:
       # Build/tests run against an embedded Postgres (PGlite); no external services needed.
       ADMIN_PASSWORD: e2e-admin
       ADMIN_SECRET: e2e-secret
+      REGISTRATION_RATE_LIMIT: "1000"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

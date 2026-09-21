@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { isAdmin } from "@/lib/admin-auth";
-import { sendDueReminders } from "@/lib/reminders";
+import { notifyOrganizers } from "@/lib/alerts";
+import { runDailyJobs } from "@/lib/cron";
 
 export const dynamic = "force-dynamic";
 
@@ -16,14 +17,19 @@ function bearerOk(req: Request) {
 }
 
 /**
- * Sends the "game night is tomorrow" reminders. Called daily by Vercel Cron
- * (see vercel.json) with `Authorization: Bearer $CRON_SECRET`; a logged-in admin
- * can also open it in the browser.
+ * Daily jobs: "game night is tomorrow" reminders and the "spots left" Discord post.
+ * Called by Vercel Cron (see vercel.json) with `Authorization: Bearer $CRON_SECRET`;
+ * a logged-in admin can also open it in the browser.
  */
 export async function GET(req: Request) {
   if (!bearerOk(req) && !(await isAdmin())) {
     return new Response("Unauthorized", { status: 401 });
   }
-  const result = await sendDueReminders();
-  return Response.json(result);
+  try {
+    return Response.json(await runDailyJobs());
+  } catch (e) {
+    console.error("Cron failed", e);
+    await notifyOrganizers("Denní cron selhal", `Chyba: ${e instanceof Error ? e.message : String(e)}. Podívej se do logu ve Vercelu.`);
+    return new Response("Cron failed", { status: 500 });
+  }
 }

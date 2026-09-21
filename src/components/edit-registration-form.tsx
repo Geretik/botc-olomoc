@@ -28,11 +28,12 @@ export function EditRegistrationForm({
   );
   const [cancelState, setCancelState] = useState<FormState | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [reason, setReason] = useState("");
 
   async function onCancel() {
-    if (!confirm(t.cancelConfirm)) return;
     setCancelling(true);
-    const res = await cancelRegistrationAction(r.editToken);
+    const res = await cancelRegistrationAction(r.editToken, reason);
     setCancelState(res);
     setCancelling(false);
   }
@@ -90,15 +91,41 @@ export function EditRegistrationForm({
         <Field label={t.note} name="note" errors={fe.note} hint={t.noteHint}>
           <textarea id="note" name="note" rows={2} maxLength={500} defaultValue={r.note ?? ""} className={inputClass} />
         </Field>
-        <div className="flex flex-wrap gap-3">
-          <Button type="submit" disabled={pending}>
-            {pending ? t.saving : t.save}
-          </Button>
-          <Button type="button" variant="danger" onClick={onCancel} disabled={cancelling}>
-            {cancelling ? t.cancelling : t.cancel}
-          </Button>
-        </div>
+        {!confirmingCancel && (
+          <div className="flex flex-wrap gap-3">
+            <Button type="submit" disabled={pending}>
+              {pending ? t.saving : t.save}
+            </Button>
+            <Button type="button" variant="danger" onClick={() => setConfirmingCancel(true)}>
+              {t.cancel}
+            </Button>
+          </div>
+        )}
       </form>
+      {confirmingCancel && (
+        <div className="flex flex-col gap-3 rounded-xl border border-accent/40 bg-accent/5 p-4" data-testid="cancel-panel">
+          <p className="font-medium">{t.cancelConfirm}</p>
+          <Field label={t.cancelReason} name="cancelReason" hint={t.cancelReasonHint}>
+            <textarea
+              id="cancelReason"
+              name="cancelReason"
+              rows={2}
+              maxLength={500}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className={inputClass}
+            />
+          </Field>
+          <div className="flex flex-wrap gap-3">
+            <Button type="button" variant="danger" onClick={onCancel} disabled={cancelling}>
+              {cancelling ? t.cancelling : t.cancelYes}
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => setConfirmingCancel(false)} disabled={cancelling}>
+              {t.cancelNo}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

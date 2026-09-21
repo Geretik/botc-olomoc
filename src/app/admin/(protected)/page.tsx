@@ -4,6 +4,7 @@ import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 import { listAllSessions } from "@/lib/queries";
 import { formatDate, formatTime } from "@/lib/time";
+import { orgFeedUrl } from "@/lib/org-feed";
 
 export default async function AdminHomePage() {
   const [{ locale, t }, sessions] = await Promise.all([getDict(), listAllSessions()]);
@@ -43,6 +44,13 @@ export default async function AdminHomePage() {
           <h2 className="text-xl font-bold text-muted">{a.past}</h2>
           {past.map((s) => <Row key={s.id} s={s} />)}
         </section>
+      )}
+      {orgFeedUrl() && (
+        <p className="text-sm text-muted">
+          <a href={orgFeedUrl()!} className="underline hover:text-accent">{a.orgCalendar}</a>
+          <span className="block text-xs">{a.orgCalendarHint}</span>
+          <code className="block select-all break-all text-xs">{orgFeedUrl()}</code>
+        </p>
       )}
     </div>
   );

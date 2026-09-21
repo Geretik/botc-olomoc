@@ -23,7 +23,7 @@ import { getDict } from "@/i18n/server";
 import { discordConfigured } from "@/lib/discord";
 import { getSessionWithCount, listRegistrationsForSession } from "@/lib/queries";
 import { countPendingReminders } from "@/lib/reminders";
-import { dateToPragueLocal, formatTime } from "@/lib/time";
+import { dateToPragueLocal, formatDate, formatTime } from "@/lib/time";
 import { editUrl } from "@/lib/site";
 
 function Flags({ r, t }: { r: Registration; t: Dict["admin"]["session"] }) {
@@ -223,7 +223,11 @@ export default async function AdminSessionPage({
           <ul className="flex flex-col gap-2 text-sm">
             {cancelled.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
-                <span className="text-muted">{r.firstName} {r.lastName} ({r.nickname}) · {r.email}</span>
+                <span className="text-muted">
+                  {r.firstName} {r.lastName} ({r.nickname}) · {r.email}
+                  {r.cancelledAt && <> · {t.cancelledAt} {formatDate(r.cancelledAt, locale)} {formatTime(r.cancelledAt, locale)}</>}
+                  {r.cancelReason && <> · {t.cancelReason}: „{r.cancelReason}“</>}
+                </span>
                 <form action={adminRestoreRegistrationAction.bind(null, r.id)}>
                   <Button type="submit" variant="secondary">{t.restore}</Button>
                 </form>

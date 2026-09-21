@@ -1,6 +1,12 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import { and, eq, inArray, sql } from "drizzle-orm";
+import { headers } from "next/headers";
+import { dictionaries } from "@/i18n/dictionaries";
+import { notifyOrganizers } from "@/lib/alerts";
+import { siteUrl } from "@/lib/site";
+import { formatRange } from "@/lib/time";
 import { db } from "@/db";
 import { registrations, sessions } from "@/db/schema";
 import {
@@ -36,12 +42,35 @@ export type RegisterResult = FormState & {
   emailThrottled?: boolean;
 };
 
+/** Sign-ups allowed from one network per hour (bots, double posts). Raised for e2e via env. */
+const RATE_LIMIT_PER_HOUR = Number(process.env.REGISTRATION_RATE_LIMIT ?? 10);
+
+/** Salted hash of the caller's IP – enough to rate-limit, not enough to identify anyone later. */
+async function clientIpHash() {
+  const h = await headers();
+  const ip = (h.get("x-forwarded-for") ?? h.get("x-real-ip") ?? "").split(",")[0]?.trim();
+  if (!ip) return null;
+  return createHash("sha256").update(`${process.env.ADMIN_SECRET ?? ""}:${ip}`).digest("hex").slice(0, 32);
+}
+
+async function recentSignupsFrom(ipHash: string) {
+  const [{ c }] = await db
+    .select({ c: sql<number>`count(*)::int` })
+    .from(registrations)
+    .where(and(eq(registrations.ipHash, ipHash), sql`${registrations.createdAt} > now() - interval '1 hour'`));
+  return c;
+}
+
 async function trySend(fn: () => Promise<void>) {
   try {
     await fn();
     return false;
   } catch (e) {
     console.error("E-mail could not be sent", e);
+    await notifyOrganizers(
+      "E-mail hráči se nepodařilo odeslat",
+      `Potvrzení registrace neodešlo: ${e instanceof Error ? e.message : String(e)}. Hráč o tom ví a má napsat organizátorům; v adminu je u něj ⚠️ a tlačítko ✉️ pro nové odeslání. Zkontroluj nastavení Resend (doména, EMAIL_FROM).`,
+    );
     return true;
   }
 }
@@ -67,6 +96,10 @@ export async function registerAction(
     const s = await db.query.sessions.findFirst({ where: eq(sessions.id, sessionId) });
     const timeErrors = s && timeRangeErrors(data, s, t.errors);
     if (timeErrors) return { error: t.errors.checkForm, fieldErrors: timeErrors };
+  }
+  const ipHash = await clientIpHash();
+  if (ipHash && (await recentSignupsFrom(ipHash)) >= RATE_LIMIT_PER_HOUR) {
+    return { error: t.errors.rateLimited };
   }
 
   try {
@@ -123,6 +156,7 @@ export async function registerAction(
         arrivalTime: data.arrivalTime,
         departureTime: data.departureTime,
         note: data.note ?? null,
+        ipHash,
         canStorytell: data.canStorytell,
         isNewbie: data.isNewbie,
         status: full ? ("waitlisted" as const) : ("confirmed" as const),
@@ -233,20 +267,36 @@ export async function updateRegistrationAction(
   return { ok: true };
 }
 
-export async function cancelRegistrationAction(token: string): Promise<FormState> {
+/** Organisers are alerted when a confirmed player cancels this close to the game. */
+const LATE_CANCEL_HOURS = 24;
+
+export async function cancelRegistrationAction(token: string, reason?: string): Promise<FormState> {
   const { t } = await getDict();
+  const cleanReason = (reason ?? "").trim().slice(0, 500) || null;
+  const now = new Date();
   // Cancelling never e-mails the player who cancels – but it may free a spot for a waitlisted one.
   const [updated] = await db
     .update(registrations)
-    .set({ status: "cancelled", waitlistedAt: null, updatedAt: new Date() })
+    .set({ status: "cancelled", waitlistedAt: null, cancelReason: cleanReason, cancelledAt: now, updatedAt: now })
     .where(
       and(
         eq(registrations.editToken, token),
         inArray(registrations.status, ["confirmed", "waitlisted"]),
       ),
     )
-    .returning({ sessionId: registrations.sessionId });
+    .returning({ id: registrations.id, sessionId: registrations.sessionId, nickname: registrations.nickname });
   if (!updated) return { error: t.errors.regNotFound };
-  await promoteWaitlist(updated.sessionId);
+  const promoted = await promoteWaitlist(updated.sessionId);
+  const session = await db.query.sessions.findFirst({ where: eq(sessions.id, updated.sessionId) });
+  if (session && session.startsAt.getTime() - now.getTime() < LATE_CANCEL_HOURS * 3600_000 && session.startsAt > now) {
+    const cs = dictionaries.cs;
+    await notifyOrganizers(
+      `Pozdní odhlášení: ${session.title}`,
+      `${updated.nickname} se odhlásil/a z termínu „${session.title}“ (${formatRange(session.startsAt, session.endsAt, "cs")}, ${cs.city[session.city]}), tedy méně než ${LATE_CANCEL_HOURS} h před hrou.` +
+        (cleanReason ? `\nDůvod: ${cleanReason}` : "") +
+        (promoted.length ? `\nMísto automaticky dostal/a náhradník: ${promoted.map((p) => p.nickname).join(", ")}.` : "\nŽádný náhradník není, místo je volné.") +
+        `\n${siteUrl()}/admin/termin/${session.id}`,
+    );
+  }
   return { ok: true };
 }

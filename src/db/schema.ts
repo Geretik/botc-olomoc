@@ -24,6 +24,8 @@ export const sessions = pgTable("sessions", {
   capacity: integer("capacity").notNull(),
   /** Who runs the game that night – free text, optional */
   storyteller: text("storyteller"),
+  /** Set once the "N spots left" Discord post two days before the game went out */
+  spotsPostedAt: timestamp("spots_posted_at", { withTimezone: true }),
   note: text("note"),
   /** Links to scripts played that evening (botcscripts.com, script tool, PDF on a drive, …) */
   scripts: jsonb("scripts").$type<ScriptLink[]>().notNull().default([]),
@@ -60,6 +62,11 @@ export const registrations = pgTable(
     isNewbie: boolean("is_newbie").notNull().default(false),
     /** Free-text note for the organisers, never shown publicly */
     note: text("note"),
+    /** Why the player cancelled (optional) and when */
+    cancelReason: text("cancel_reason"),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    /** Salted hash of the client IP, only for rate limiting sign-ups */
+    ipHash: text("ip_hash"),
     /** Attendance marked by the organiser after the session; null = not marked */
     attended: boolean("attended"),
     /** Set when the "tomorrow is game night" reminder was sent – sent at most once */

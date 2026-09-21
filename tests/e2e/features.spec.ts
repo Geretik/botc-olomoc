@@ -35,9 +35,9 @@ test("waitlist: full session queues players, cancellation promotes the first one
 
   // first player cancels → Second is promoted (and gets exactly one e-mail claim), Third moves up
   const [f] = await sql<{ edit_token: string }>("select edit_token from registrations where email='first@example.com'");
-  page.on("dialog", (d) => d.accept());
   await page.goto(`/r/${f.edit_token}`);
   await page.click("button:has-text('Zrušit registraci')");
+  await page.click("button:has-text('Ano, zrušit registraci')");
   await expect(page.locator("main")).toContainText("Registrace byla zrušena");
 
   const rows = await sql<{ email: string; status: string; confirmation_sent_at: Date | null }>(
@@ -138,7 +138,7 @@ test("reminders: cron is protected, sends once per player within the window", as
 
   const ok = await request.get("/api/cron/reminders", { headers: { authorization: "Bearer e2e-cron" } });
   expect(ok.status()).toBe(200);
-  expect(await ok.json()).toEqual({ due: 1, sent: 1, failed: 0 });
+  expect((await ok.json()).reminders).toEqual({ due: 1, sent: 1, failed: 0 });
 
   const rows = await sql<{ email: string; reminder_sent_at: Date | null }>(
     "select email, reminder_sent_at from registrations order by email",
@@ -148,7 +148,7 @@ test("reminders: cron is protected, sends once per player within the window", as
 
   // second run sends nothing
   const again = await request.get("/api/cron/reminders", { headers: { authorization: "Bearer e2e-cron" } });
-  expect(await again.json()).toEqual({ due: 0, sent: 0, failed: 0 });
+  expect((await again.json()).reminders).toEqual({ due: 0, sent: 0, failed: 0 });
 
   // admin can trigger reminders for a session outside the window
   await adminLogin(page);
@@ -398,4 +398,29 @@ test("pwa manifest and icons are served, share button on session page", async ({
   const id = await createSession({ title: "Sdílený večer", capacity: 5 });
   await page.goto(`/termin/${id}`);
   await expect(page.locator("main button:has-text('Sdílet termín')")).toBeVisible();
+});
+
+test("organisers' calendar feed is private and lists players; cron endpoint runs daily jobs", async ({ page }) => {
+  const id = await createSession({ title: "Org feed večer", capacity: 5 });
+  await register(page, id, { nick: "Feeder", email: "feeder@example.com" });
+
+  expect((await page.request.get("/admin/kalendar.ics")).status()).toBe(401);
+  expect((await page.request.get("/admin/kalendar.ics?key=wrong")).status()).toBe(401);
+
+  await adminLogin(page);
+  await page.goto("/admin");
+  const feedUrl = await page.locator("main code").last().textContent();
+  expect(feedUrl).toMatch(/\/admin\/kalendar\.ics\?key=[0-9a-f]{32}$/);
+  const anon = await page.context().browser()!.newContext();
+  const res = await anon.request.get(new URL(feedUrl!).pathname + new URL(feedUrl!).search);
+  expect(res.ok()).toBeTruthy();
+  // unfold RFC 5545 line continuations before searching
+  const ics = (await res.text()).replace(/\r\n[ \t]/g, "");
+  expect(ics).toContain("Org feed večer");
+  expect(ics).toContain("feeder@example.com");
+  await anon.close();
+
+  const cron = await page.request.get("/api/cron/reminders");
+  expect(cron.ok()).toBeTruthy();
+  expect(await cron.json()).toMatchObject({ reminders: expect.any(Object), spots: { posted: 0 } });
 });

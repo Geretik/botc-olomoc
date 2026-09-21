@@ -34,6 +34,11 @@ async function send(to: string, subject: string, html: string, text: string) {
   }
 }
 
+/** Plain-text message, used for organiser alerts. */
+export async function sendPlainEmail(to: string, subject: string, text: string) {
+  await send(to, subject, `<p style="white-space:pre-line">${escapeHtml(text)}</p>`, text);
+}
+
 function localeOf(reg: Registration): Locale {
   return reg.locale === "en" ? "en" : "cs";
 }

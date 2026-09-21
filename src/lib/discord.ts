@@ -7,6 +7,30 @@ export function discordConfigured() {
   return Boolean(process.env.DISCORD_WEBHOOK_URL);
 }
 
+/** Posts a plain message to the webhook; returns false when not configured or failed. Never throws. */
+export async function postDiscordMessage(content: string) {
+  const url = process.env.DISCORD_WEBHOOK_URL;
+  if (!url) return false;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ content }),
+    });
+    if (!res.ok) console.error("Discord webhook failed", res.status, await res.text());
+    return res.ok;
+  } catch (e) {
+    console.error("Discord webhook failed", e);
+    return false;
+  }
+}
+
+/** "Two days to go, N spots left" nudge. */
+export function spotsLeftMessage(s: Session, free: number) {
+  const city = dictionaries.cs.city[s.city];
+  return `🕰️ **${s.title}** (${city}) je už za dva dny a zbývá ještě **${free} ${free === 1 ? "volné místo" : free < 5 ? "volná místa" : "volných míst"}** z ${s.capacity}!\n📅 ${formatRange(s.startsAt, s.endsAt, "cs")} · 📍 ${s.place}\nRegistrace: ${sessionUrl(s.id)}`;
+}
+
 /**
  * Posts a session announcement to the Discord webhook from DISCORD_WEBHOOK_URL.
  * Returns "sent", "not_configured" or "failed"; never throws.
