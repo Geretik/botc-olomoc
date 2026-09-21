@@ -8,7 +8,7 @@ import {
 import type { Registration } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import type { FormState } from "@/lib/validation";
-import { Alert, Button, Field, inputClass } from "./ui";
+import { Alert, Button, Checkbox, Field, inputClass } from "./ui";
 
 export function EditRegistrationForm({
   registration: r,
@@ -70,6 +70,8 @@ export function EditRegistrationForm({
             <input id="departureTime" name="departureTime" type="time" defaultValue={r.departureTime ?? ""} className={inputClass} />
           </Field>
         </div>
+        <Checkbox name="canStorytell" label={t.canStorytell} hint={t.canStorytellHint} defaultChecked={r.canStorytell} />
+        <Checkbox name="isNewbie" label={t.isNewbie} hint={t.isNewbieHint} defaultChecked={r.isNewbie} />
         <div className="flex flex-wrap gap-3">
           <Button type="submit" disabled={pending}>
             {pending ? t.saving : t.save}

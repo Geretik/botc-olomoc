@@ -15,17 +15,33 @@ registraci upravit nebo zrušit.
 
 - Dvojjazyčné rozhraní **česky / English** (přepínač v hlavičce, volba se ukládá do cookie, e-maily chodí v jazyce hráče)
 
-- `/` – seznam nadcházejících termínů s počtem volných míst
-- `/termin/[id]` – detail termínu a registrační formulář (jméno, příjmení, přezdívka, e-mail, volitelný příchod/odchod)
+- `/` – seznam nadcházejících termínů s počtem volných míst a náhradníků
+- `/termin/[id]` – detail termínu a registrační formulář (jméno, příjmení, přezdívka, e-mail, volitelný příchod/odchod, „můžu dělat vypravěče“, „jsem nováček“)
+- `/termin/[id]/kalendar.ics` – termín jako soubor do kalendáře; odkaz i na Google Kalendář je na stránce termínu a v e-mailech
+- `/kalendar.ics` – veřejný iCal feed všech termínů (odběr kalendáře)
+- `/archiv` – proběhlé večery s odehranými scripty a počtem hráčů
 - `/r/[token]` – úprava / zrušení registrace přes odkaz z e-mailu
 - `/admin` – správa termínů a přehled přihlášených (chráněno heslem)
+- `/admin/statistiky` – obsazenost, docházka, pravidelní hráči
+- `/api/cron/reminders` – denní připomínky (Vercel Cron, viz níže)
+
+Náhradníci:
+- Když je termín plný, hráč se zapíše jako **náhradník** a dostane e-mail s pořadím.
+- Jakmile se někdo odhlásí (sám nebo přes admina) nebo admin zvýší kapacitu, první náhradník v pořadí je automaticky přesunut mezi přihlášené a dostane e-mail „uvolnilo se místo“.
+- Dokud někdo čeká jako náhradník, noví zájemci se řadí za něj (fronta má přednost před volným místem).
+- Admin může náhradníka potvrdit ručně i nad kapacitu.
+
+Admin navíc umí: export přihlášených do CSV, hromadný e-mail všem přihlášeným (volitelně i náhradníkům),
+duplikaci termínu (předvyplněný formulář o týden později), označení docházky (dorazil / nedorazil),
+ruční odeslání připomínky a oznámení termínu na Discord.
 
 Pravidla:
 - Jeden e-mail může mít na jeden termín jen jednu aktivní registraci. Při opakovaném pokusu se znovu pošle editační odkaz.
 - Kapacita se kontroluje v transakci se zámkem řádku termínu, takže se nedá překročit ani při souběžných registracích.
 - Zrušená registrace uvolní místo. Při nové registraci stejným e-mailem se obnoví s novým tokenem.
 - Formulář obsahuje honeypot pole proti botům.
-- E-maily se nikdy neposílají dvakrát: potvrzení jde jednou na každou (re)aktivaci registrace, opakované "už jsi registrovaný" nejdřív po 10 minutách. Úprava ani zrušení registrace e-mail neposílají.
+- E-maily se nikdy neposílají dvakrát: potvrzení jde jednou na každou (re)aktivaci registrace, opakované "už jsi registrovaný" nejdřív po 10 minutách, připomínka nejvýš jednou na registraci. Úprava ani zrušení registrace e-mail neposílají (zrušení může poslat e-mail *náhradníkovi*, který místo dostal).
+- Připomínka „zítra je hra“ odchází hráčům termínů, které začínají do 36 hodin. Cron běží denně v 8:00 UTC (`vercel.json`), takže e-mail přijde den před hrou dopoledne.
 - Časy se zobrazují i zadávají v časové zóně `Europe/Prague`.
 
 ## Lokální vývoj
@@ -51,13 +67,16 @@ Admin: `/admin/login`, heslo z `ADMIN_PASSWORD`.
 | `NEXT_PUBLIC_SITE_URL` | Veřejná URL webu pro odkazy v e-mailech, bez lomítka na konci |
 | `ADMIN_PASSWORD` | Heslo do adminu |
 | `ADMIN_SECRET` | Náhodný řetězec pro podpis admin cookie (`openssl rand -hex 32`) |
+| `CRON_SECRET` | Tajemství pro cron připomínek; Vercel ho posílá automaticky v hlavičce `Authorization: Bearer …` (`openssl rand -hex 32`) |
+| `DISCORD_WEBHOOK_URL` | Volitelné. Webhook Discord kanálu pro oznámení nových termínů (bez něj se tlačítka jen hlásí, že Discord není nastavený) |
 
 ## Nasazení na Vercel
 
 1. Importuj repozitář do Vercelu.
 2. V Marketplace přidej **Neon** (nebo jiný Postgres) – Vercel nastaví `DATABASE_URL` automaticky.
 3. Přidej integraci **Resend**, ověř doménu a nastav `RESEND_API_KEY` a `EMAIL_FROM`.
-4. Nastav `NEXT_PUBLIC_SITE_URL`, `ADMIN_PASSWORD`, `ADMIN_SECRET`.
+4. Nastav `NEXT_PUBLIC_SITE_URL`, `ADMIN_PASSWORD`, `ADMIN_SECRET`, `CRON_SECRET` (a případně `DISCORD_WEBHOOK_URL`).
+   Cron pro připomínky je definovaný v `vercel.json`; Vercel ho po deployi zapne sám (na Hobby plánu běží jednou denně).
 5. Vytvoř tabulky: lokálně s produkčním `DATABASE_URL` spusť `npm run db:push`
    (nebo použij `npm run db:generate` + `npm run db:migrate` pro migrace).
 6. Deploy. Pak v `/admin` vypiš první termín.

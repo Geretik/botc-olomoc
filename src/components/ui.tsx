@@ -77,3 +77,31 @@ export function Alert({
   }[kind];
   return <div className={`rounded-md border px-4 py-3 text-sm ${cls}`}>{children}</div>;
 }
+
+export function Checkbox({
+  name,
+  label,
+  hint,
+  defaultChecked = false,
+}: {
+  name: string;
+  label: string;
+  hint?: string;
+  defaultChecked?: boolean;
+}) {
+  return (
+    <label htmlFor={name} className="flex items-start gap-3 text-sm">
+      <input
+        id={name}
+        name={name}
+        type="checkbox"
+        defaultChecked={defaultChecked}
+        className="mt-0.5 h-4 w-4 accent-accent"
+      />
+      <span className="flex flex-col">
+        <span className="font-medium">{label}</span>
+        {hint && <span className="text-xs text-muted">{hint}</span>}
+      </span>
+    </label>
+  );
+}

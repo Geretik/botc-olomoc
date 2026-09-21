@@ -2,7 +2,8 @@ import Link from "next/link";
 import { EditRegistrationForm } from "@/components/edit-registration-form";
 import { Alert, Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
-import { getRegistrationByToken } from "@/lib/queries";
+import { CalendarLinks } from "@/components/calendar-links";
+import { getRegistrationByToken, waitlistPosition } from "@/lib/queries";
 import { formatDate, formatTime } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +28,7 @@ export default async function EditRegistrationPage({
 
   const s = reg.session;
   const past = s.endsAt < new Date();
+  const position = reg.status === "waitlisted" ? await waitlistPosition(reg) : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -42,6 +44,7 @@ export default async function EditRegistrationPage({
           <span aria-hidden className="mr-1.5">📍</span>
           {s.place}
         </p>
+        {!past && reg.status === "confirmed" && <CalendarLinks session={s} t={t} className="mt-2" />}
       </div>
       <Card>
         {reg.status === "cancelled" ? (
@@ -52,12 +55,19 @@ export default async function EditRegistrationPage({
         ) : past ? (
           <Alert kind="info">{t.session.past}</Alert>
         ) : (
-          <EditRegistrationForm
+          <>
+            {position !== null && (
+              <div className="mb-4">
+                <Alert kind="info">{t.edit.waitlistedInfo(position)}</Alert>
+              </div>
+            )}
+            <EditRegistrationForm
             registration={reg}
             defaultArrival={formatTime(s.startsAt, locale)}
             defaultDeparture={formatTime(s.endsAt, locale)}
             t={t.form}
-          />
+            />
+          </>
         )}
       </Card>
     </div>

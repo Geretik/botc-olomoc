@@ -1,4 +1,5 @@
 import {
+  boolean,
   integer,
   jsonb,
   pgTable,
@@ -41,9 +42,19 @@ export const registrations = pgTable(
     arrivalTime: text("arrival_time"),
     /** "HH:MM" in Europe/Prague, null = same as session end */
     departureTime: text("departure_time"),
-    status: text("status", { enum: ["confirmed", "cancelled"] })
+    status: text("status", { enum: ["confirmed", "waitlisted", "cancelled"] })
       .notNull()
       .default("confirmed"),
+    /** When the player joined the waitlist – decides the order of promotion */
+    waitlistedAt: timestamp("waitlisted_at", { withTimezone: true }),
+    /** Player is willing to run the game as the Storyteller */
+    canStorytell: boolean("can_storytell").notNull().default(false),
+    /** Player is new to the game */
+    isNewbie: boolean("is_newbie").notNull().default(false),
+    /** Attendance marked by the organiser after the session; null = not marked */
+    attended: boolean("attended"),
+    /** Set when the "tomorrow is game night" reminder was sent – sent at most once */
+    reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
     /** UI language the player used; e-mails are sent in it */
     locale: text("locale", { enum: ["cs", "en"] }).notNull().default("cs"),
     /** Set once the confirmation e-mail for the current (re)activation was sent – never send it twice */
@@ -79,3 +90,4 @@ export const registrationsRelations = relations(registrations, ({ one }) => ({
 
 export type Session = typeof sessions.$inferSelect;
 export type Registration = typeof registrations.$inferSelect;
+export type RegistrationStatus = Registration["status"];

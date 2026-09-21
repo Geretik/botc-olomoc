@@ -15,6 +15,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <nav className="flex flex-wrap items-center gap-3 border-b border-border pb-3 text-sm">
         <Link href="/admin" className="font-semibold">Admin</Link>
         <Link href="/admin/novy" className="hover:underline">+ Nový termín</Link>
+        <Link href="/admin/statistiky" className="hover:underline">Statistiky</Link>
         <form action={logoutAction} className="ml-auto">
           <Button type="submit" variant="secondary">Odhlásit</Button>
         </form>

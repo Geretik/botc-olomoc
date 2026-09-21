@@ -17,6 +17,8 @@ const env = {
   ADMIN_SECRET: process.env.ADMIN_SECRET ?? "e2e-secret",
   NEXT_PUBLIC_SITE_URL: `http://localhost:${WEB_PORT}`,
   RESEND_API_KEY: "", // e-mails are only logged
+  CRON_SECRET: "e2e-cron",
+  DISCORD_WEBHOOK_URL: "",
   PORT: String(WEB_PORT),
 };
 

@@ -1,11 +1,12 @@
 "use server";
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { registrations, sessions } from "@/db/schema";
 import {
   sendConfirmationEmail,
   sendExistingRegistrationEmail,
+  sendWaitlistEmail,
 } from "@/lib/email";
 import { generateEditToken } from "@/lib/token";
 import {
@@ -14,6 +15,7 @@ import {
   registrationSchema,
   type FormState,
 } from "@/lib/validation";
+import { promoteWaitlist } from "@/lib/waitlist";
 import { getDict } from "@/i18n/server";
 
 // Note: no revalidatePath() here on purpose. All public pages are force-dynamic,
@@ -24,7 +26,9 @@ import { getDict } from "@/i18n/server";
 const RESEND_COOLDOWN_MS = 10 * 60 * 1000;
 
 export type RegisterResult = FormState & {
-  outcome?: "created" | "already_registered";
+  outcome?: "created" | "waitlisted" | "already_registered";
+  /** 1-based position in the waitlist when outcome = "waitlisted" */
+  position?: number;
   emailFailed?: boolean;
   /** true when the "already registered" mail was NOT re-sent because one went out recently */
   emailThrottled?: boolean;
@@ -75,7 +79,7 @@ export async function registerAction(
         ),
       });
 
-      if (existing && existing.status === "confirmed") {
+      if (existing && existing.status !== "cancelled") {
         // Throttle re-sends: claim the send slot inside the locked transaction so two
         // concurrent duplicate submissions can never both send.
         const recent =
@@ -89,16 +93,20 @@ export async function registerAction(
         return { kind: "already" as const, session, registration: existing };
       }
 
-      const [{ count }] = await tx
-        .select({ count: sql<number>`count(*)::int` })
+      const [{ confirmed, waitlisted }] = await tx
+        .select({
+          confirmed: sql<number>`count(*) filter (where ${registrations.status} = 'confirmed')::int`,
+          waitlisted: sql<number>`count(*) filter (where ${registrations.status} = 'waitlisted')::int`,
+        })
         .from(registrations)
         .where(
           and(
             eq(registrations.sessionId, sessionId),
-            eq(registrations.status, "confirmed"),
+            inArray(registrations.status, ["confirmed", "waitlisted"]),
           ),
         );
-      if (count >= session.capacity) return { kind: "full" as const };
+      // A spot is free only when nobody is queued for it – the waitlist has priority.
+      const full = confirmed >= session.capacity || waitlisted > 0;
 
       const now = new Date();
       const values = {
@@ -107,12 +115,17 @@ export async function registerAction(
         nickname: data.nickname,
         arrivalTime: data.arrivalTime,
         departureTime: data.departureTime,
-        status: "confirmed" as const,
+        canStorytell: data.canStorytell,
+        isNewbie: data.isNewbie,
+        status: full ? ("waitlisted" as const) : ("confirmed" as const),
+        waitlistedAt: full ? now : null,
         locale,
-        // claim the confirmation send right away – exactly one confirmation per (re)activation
+        // claim the confirmation send right away – exactly one e-mail per (re)activation
         confirmationSentAt: now,
         lastEmailAt: now,
         updatedAt: now,
+        reminderSentAt: null,
+        attended: null,
       };
 
       let registration;
@@ -134,6 +147,9 @@ export async function registerAction(
           })
           .returning();
       }
+      if (full) {
+        return { kind: "waitlisted" as const, session, registration, position: waitlisted + 1 };
+      }
       return { kind: "created" as const, session, registration };
     });
 
@@ -142,8 +158,6 @@ export async function registerAction(
         return { error: t.errors.notFound };
       case "past":
         return { error: t.errors.past };
-      case "full":
-        return { error: t.errors.full };
       case "already_throttled":
         return { ok: true, outcome: "already_registered", emailThrottled: true };
       case "already": {
@@ -152,17 +166,18 @@ export async function registerAction(
         );
         return { ok: true, outcome: "already_registered", emailFailed };
       }
+      case "waitlisted": {
+        const emailFailed = await trySend(() =>
+          sendWaitlistEmail(result.registration, result.session, result.position),
+        );
+        if (emailFailed) await releaseConfirmationClaim(result.registration.id);
+        return { ok: true, outcome: "waitlisted", position: result.position, emailFailed };
+      }
       case "created": {
         const emailFailed = await trySend(() =>
           sendConfirmationEmail(result.registration, result.session),
         );
-        if (emailFailed) {
-          // release the claim so an organiser could re-trigger it later
-          await db
-            .update(registrations)
-            .set({ confirmationSentAt: null })
-            .where(eq(registrations.id, result.registration.id));
-        }
+        if (emailFailed) await releaseConfirmationClaim(result.registration.id);
         return { ok: true, outcome: "created", emailFailed };
       }
     }
@@ -170,6 +185,14 @@ export async function registerAction(
     console.error(e);
     return { error: t.errors.generic };
   }
+}
+
+/** Lets an organiser re-trigger the confirmation later when sending failed. */
+async function releaseConfirmationClaim(registrationId: number) {
+  await db
+    .update(registrations)
+    .set({ confirmationSentAt: null })
+    .where(eq(registrations.id, registrationId));
 }
 
 export async function updateRegistrationAction(
@@ -191,7 +214,7 @@ export async function updateRegistrationAction(
     .where(
       and(
         eq(registrations.editToken, token),
-        eq(registrations.status, "confirmed"),
+        inArray(registrations.status, ["confirmed", "waitlisted"]),
       ),
     )
     .returning({ id: registrations.id });
@@ -201,12 +224,18 @@ export async function updateRegistrationAction(
 
 export async function cancelRegistrationAction(token: string): Promise<FormState> {
   const { t } = await getDict();
-  // Cancelling never sends e-mail.
+  // Cancelling never e-mails the player who cancels – but it may free a spot for a waitlisted one.
   const [updated] = await db
     .update(registrations)
-    .set({ status: "cancelled", updatedAt: new Date() })
-    .where(eq(registrations.editToken, token))
+    .set({ status: "cancelled", waitlistedAt: null, updatedAt: new Date() })
+    .where(
+      and(
+        eq(registrations.editToken, token),
+        inArray(registrations.status, ["confirmed", "waitlisted"]),
+      ),
+    )
     .returning({ sessionId: registrations.sessionId });
   if (!updated) return { error: t.errors.regNotFound };
+  await promoteWaitlist(updated.sessionId);
   return { ok: true };
 }

@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import type { Registration, Session } from "@/db/schema";
 import { dictionaries, type Locale } from "@/i18n/dictionaries";
+import { googleCalendarUrl, sessionIcsUrl } from "./ics";
 import { formatRange, formatTime } from "./time";
 import { editUrl } from "./site";
 
@@ -31,40 +32,190 @@ function localeOf(reg: Registration): Locale {
   return reg.locale === "en" ? "en" : "cs";
 }
 
+type EmailDict = (typeof dictionaries)["cs"]["email"];
+
+function detailsTable(t: EmailDict, reg: Registration, session: Session, locale: Locale) {
+  const arrival = reg.arrivalTime ?? formatTime(session.startsAt, locale);
+  const departure = reg.departureTime ?? formatTime(session.endsAt, locale);
+  const when = formatRange(session.startsAt, session.endsAt, locale);
+  const text = `${t.session}: ${session.title}
+${t.when}: ${when}
+${t.where}: ${session.place}
+${t.yourArrivalDeparture}: ${arrival}–${departure}`;
+  const html = `<table cellpadding="4" style="border-collapse:collapse">
+<tr><td><strong>${t.session}</strong></td><td>${escapeHtml(session.title)}</td></tr>
+<tr><td><strong>${t.when}</strong></td><td>${escapeHtml(when)}</td></tr>
+<tr><td><strong>${t.where}</strong></td><td>${escapeHtml(session.place)}</td></tr>
+<tr><td><strong>${t.arrivalDeparture}</strong></td><td>${arrival}–${departure}</td></tr>
+</table>`;
+  return { text, html, when };
+}
+
+function calendarBlock(t: EmailDict, session: Session) {
+  const ics = sessionIcsUrl(session.id);
+  const google = googleCalendarUrl(session);
+  return {
+    text: `${t.calendar}\n${t.calendarIcs}: ${ics}\n${t.calendarGoogle}: ${google}`,
+    html: `<p>${escapeHtml(t.calendar)} <a href="${ics}">${t.calendarIcs}</a> · <a href="${escapeHtml(google)}">${t.calendarGoogle}</a></p>`,
+  };
+}
+
+function editBlock(t: EmailDict, reg: Registration) {
+  const link = editUrl(reg.editToken);
+  return {
+    text: `${t.editText}\n${link}`,
+    html: `<p>${t.editHtmlBefore}<a href="${link}">${t.editHtmlLink}</a>${t.editHtmlAfter}</p>`,
+  };
+}
+
 export async function sendConfirmationEmail(reg: Registration, session: Session) {
   const locale = localeOf(reg);
   const t = dictionaries[locale].email;
-  const arrival = reg.arrivalTime ?? formatTime(session.startsAt, locale);
-  const departure = reg.departureTime ?? formatTime(session.endsAt, locale);
-  const link = editUrl(reg.editToken);
-  const when = formatRange(session.startsAt, session.endsAt, locale);
+  const d = detailsTable(t, reg, session, locale);
+  const cal = calendarBlock(t, session);
+  const edit = editBlock(t, reg);
 
   const text = `${t.hi(reg.firstName)}
 
 ${t.confirmed}
 
-${t.session}: ${session.title}
-${t.when}: ${when}
-${t.where}: ${session.place}
-${t.yourArrivalDeparture}: ${arrival}–${departure}
+${d.text}
 
-${t.editText}
-${link}
+${cal.text}
+
+${edit.text}
 
 ${t.seeYou}`;
 
   const html = `<p>${escapeHtml(t.hi(reg.firstName))}</p>
 <p>${escapeHtml(t.confirmed)}</p>
-<table cellpadding="4" style="border-collapse:collapse">
-<tr><td><strong>${t.session}</strong></td><td>${escapeHtml(session.title)}</td></tr>
-<tr><td><strong>${t.when}</strong></td><td>${escapeHtml(when)}</td></tr>
-<tr><td><strong>${t.where}</strong></td><td>${escapeHtml(session.place)}</td></tr>
-<tr><td><strong>${t.arrivalDeparture}</strong></td><td>${arrival}–${departure}</td></tr>
-</table>
-<p>${t.editHtmlBefore}<a href="${link}">${t.editHtmlLink}</a>${t.editHtmlAfter}</p>
+${d.html}
+${cal.html}
+${edit.html}
 <p>${t.seeYou}</p>`;
 
   await send(reg.email, t.confirmSubject(session.title), html, text);
+}
+
+export async function sendWaitlistEmail(reg: Registration, session: Session, position: number) {
+  const locale = localeOf(reg);
+  const t = dictionaries[locale].email;
+  const d = detailsTable(t, reg, session, locale);
+  const edit = editBlock(t, reg);
+
+  const text = `${t.hi(reg.firstName)}
+
+${t.waitlisted(position)}
+
+${d.text}
+
+${edit.text}`;
+
+  const html = `<p>${escapeHtml(t.hi(reg.firstName))}</p>
+<p>${escapeHtml(t.waitlisted(position))}</p>
+${d.html}
+${edit.html}`;
+
+  await send(reg.email, t.waitlistSubject(session.title), html, text);
+}
+
+export async function sendPromotedEmail(reg: Registration, session: Session) {
+  const locale = localeOf(reg);
+  const t = dictionaries[locale].email;
+  const d = detailsTable(t, reg, session, locale);
+  const cal = calendarBlock(t, session);
+  const edit = editBlock(t, reg);
+
+  const text = `${t.hi(reg.firstName)}
+
+${t.promoted}
+
+${d.text}
+
+${cal.text}
+
+${t.promotedCancelHint}
+${edit.text}
+
+${t.seeYou}`;
+
+  const html = `<p>${escapeHtml(t.hi(reg.firstName))}</p>
+<p>${escapeHtml(t.promoted)}</p>
+${d.html}
+${cal.html}
+<p>${escapeHtml(t.promotedCancelHint)}</p>
+${edit.html}
+<p>${t.seeYou}</p>`;
+
+  await send(reg.email, t.promotedSubject(session.title), html, text);
+}
+
+export async function sendReminderEmail(reg: Registration, session: Session) {
+  const locale = localeOf(reg);
+  const t = dictionaries[locale].email;
+  const d = detailsTable(t, reg, session, locale);
+  const cal = calendarBlock(t, session);
+  const edit = editBlock(t, reg);
+  const scripts = session.scripts.length
+    ? {
+        text: `${t.scripts}\n${session.scripts.map((s) => `${s.name}: ${s.url}`).join("\n")}\n\n`,
+        html: `<p>${escapeHtml(t.scripts)} ${session.scripts
+          .map((s) => `<a href="${escapeHtml(s.url)}">${escapeHtml(s.name)}</a>`)
+          .join(", ")}</p>`,
+      }
+    : { text: "", html: "" };
+
+  const text = `${t.hi(reg.firstName)}
+
+${t.reminder}
+
+${d.text}
+
+${scripts.text}${t.reminderCancelHint}
+${edit.text}
+
+${cal.text}
+
+${t.seeYou}`;
+
+  const html = `<p>${escapeHtml(t.hi(reg.firstName))}</p>
+<p>${escapeHtml(t.reminder)}</p>
+${d.html}
+${scripts.html}
+<p>${escapeHtml(t.reminderCancelHint)}</p>
+${edit.html}
+${cal.html}
+<p>${t.seeYou}</p>`;
+
+  await send(reg.email, t.reminderSubject(session.title), html, text);
+}
+
+/** Free-form message from the organisers to one player, with the edit link in the footer. */
+export async function sendBroadcastEmail(
+  reg: Registration,
+  session: Session,
+  subject: string,
+  message: string,
+) {
+  const locale = localeOf(reg);
+  const t = dictionaries[locale].email;
+  const link = editUrl(reg.editToken);
+  const when = formatRange(session.startsAt, session.endsAt, locale);
+
+  const text = `${t.hi(reg.firstName)}
+
+${message}
+
+—
+${t.broadcastFooter(session.title, when)}
+${link}`;
+
+  const html = `<p>${escapeHtml(t.hi(reg.firstName))}</p>
+<p style="white-space:pre-line">${escapeHtml(message)}</p>
+<hr>
+<p style="color:#666;font-size:90%">${escapeHtml(t.broadcastFooter(session.title, when))} <a href="${link}">${t.editHtmlLink}</a>.</p>`;
+
+  await send(reg.email, subject, html, text);
 }
 
 export async function sendExistingRegistrationEmail(reg: Registration, session: Session) {
@@ -72,15 +223,19 @@ export async function sendExistingRegistrationEmail(reg: Registration, session: 
   const t = dictionaries[locale].email;
   const link = editUrl(reg.editToken);
   const when = formatRange(session.startsAt, session.endsAt, locale);
+  const body =
+    reg.status === "waitlisted"
+      ? t.alreadyWaitlistedText(session.title, when)
+      : t.alreadyText(session.title, when);
   const text = `${t.hi(reg.firstName)}
 
-${t.alreadyText(session.title, when)}
+${body}
 
 ${t.alreadyEdit}
 ${link}`;
 
   const html = `<p>${escapeHtml(t.hi(reg.firstName))}</p>
-<p>${escapeHtml(t.alreadyText(session.title, when))}</p>
+<p>${escapeHtml(body)}</p>
 <p>${t.editHtmlBefore}<a href="${link}">${t.editHtmlLink}</a>.</p>`;
 
   await send(reg.email, t.existingSubject(session.title), html, text);

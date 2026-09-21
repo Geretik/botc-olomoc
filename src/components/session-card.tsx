@@ -52,6 +52,9 @@ export function SessionCard({
         >
           {full ? t.session.full : t.session.freeSpots(free, s.capacity)}
         </span>
+        {s.waitlistedCount > 0 && (
+          <span className="text-xs text-muted">{t.session.waitlisted(s.waitlistedCount)}</span>
+        )}
         <Link
           href={`/termin/${s.id}`}
           className={`rounded-md px-4 py-2 text-sm font-medium ${

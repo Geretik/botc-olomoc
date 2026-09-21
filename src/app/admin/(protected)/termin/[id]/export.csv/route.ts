@@ -1,0 +1,63 @@
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { sessions } from "@/db/schema";
+import { isAdmin } from "@/lib/admin-auth";
+import { listRegistrationsForSession } from "@/lib/queries";
+import { formatTime } from "@/lib/time";
+
+export const dynamic = "force-dynamic";
+
+function cell(v: string | number | boolean | null | undefined) {
+  if (v === null || v === undefined) return "";
+  const s = typeof v === "boolean" ? (v ? "ano" : "ne") : String(v);
+  return /[";\n\r]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s;
+}
+
+const STATUS: Record<string, string> = {
+  confirmed: "přihlášen",
+  waitlisted: "náhradník",
+  cancelled: "odhlášen",
+};
+
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await isAdmin())) return new Response("Unauthorized", { status: 401 });
+  const { id } = await params;
+  const numId = Number(id);
+  if (!Number.isInteger(numId)) return new Response("Not found", { status: 404 });
+  const [session, regs] = await Promise.all([
+    db.query.sessions.findFirst({ where: eq(sessions.id, numId) }),
+    listRegistrationsForSession(numId),
+  ]);
+  if (!session) return new Response("Not found", { status: 404 });
+
+  const header = ["Jméno", "Příjmení", "Přezdívka", "E-mail", "Stav", "Příchod", "Odchod", "Vypravěč", "Nováček", "Dorazil", "Registrace"];
+  const rows = regs.map((r) => [
+    r.firstName,
+    r.lastName,
+    r.nickname,
+    r.email,
+    STATUS[r.status] ?? r.status,
+    r.arrivalTime ?? formatTime(session.startsAt),
+    r.departureTime ?? formatTime(session.endsAt),
+    r.canStorytell,
+    r.isNewbie,
+    r.attended === null ? "" : r.attended,
+    r.createdAt.toISOString(),
+  ]);
+  // semicolon-separated + BOM so Czech Excel opens it correctly
+  const csv = "﻿" + [header, ...rows].map((row) => row.map(cell).join(";")).join("\r\n") + "\r\n";
+  // header values must be ASCII: strip diacritics, keep letters/digits
+  const safeTitle = session.title
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase();
+  return new Response(csv, {
+    headers: {
+      "content-type": "text/csv; charset=utf-8",
+      "content-disposition": `attachment; filename="botc-${session.id}-${safeTitle}.csv"`,
+      "cache-control": "no-store",
+    },
+  });
+}

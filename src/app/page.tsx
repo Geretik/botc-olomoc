@@ -1,6 +1,7 @@
 import { SessionCard } from "@/components/session-card";
 import { getDict } from "@/i18n/server";
 import { isAdmin } from "@/lib/admin-auth";
+import { feedIcsUrl } from "@/lib/ics";
 import { listUpcomingSessions } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,12 @@ export default async function HomePage() {
           ))}
         </div>
       )}
+      <p className="text-sm text-muted">
+        <span aria-hidden className="mr-1.5">🗓️</span>
+        {t.home.calendarFeed}
+        <a href={feedIcsUrl()} className="underline hover:text-accent">{t.home.calendarFeedLink}</a>
+        <span className="block text-xs">{t.home.calendarFeedHint}</span>
+      </p>
     </div>
   );
 }

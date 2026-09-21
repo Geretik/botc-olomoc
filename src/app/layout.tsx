@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import Link from "next/link";
 import { LanguageSwitch } from "@/components/language-switch";
 import { getDict } from "@/i18n/server";
+import { siteUrl } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -11,8 +12,20 @@ const geistSans = Geist({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const { t } = await getDict();
-  return { title: t.meta.title, description: t.meta.description };
+  const { locale, t } = await getDict();
+  return {
+    metadataBase: new URL(siteUrl()),
+    title: { default: t.meta.title, template: `%s` },
+    description: t.meta.description,
+    openGraph: {
+      siteName: t.meta.title,
+      title: t.meta.title,
+      description: t.meta.description,
+      type: "website",
+      locale: locale === "cs" ? "cs_CZ" : "en_GB",
+    },
+    twitter: { card: "summary_large_image" },
+  };
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -28,6 +41,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <nav className="flex items-center gap-4 text-sm">
               <Link href="/" className="hover:underline">{t.nav.sessions}</Link>
               <Link href="/o-hre" className="hover:underline">{t.nav.about}</Link>
+              <Link href="/archiv" className="hover:underline">{t.nav.archive}</Link>
               <LanguageSwitch locale={locale} t={t} />
             </nav>
           </div>
@@ -38,9 +52,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <footer className="border-t border-border">
           <div className="mx-auto max-w-3xl px-4 py-4 text-sm text-muted flex justify-between">
             <span>{t.nav.footer}</span>
-            <Link href="/admin" className="hover:underline">
-              {t.nav.admin}
-            </Link>
+            <span className="flex gap-4">
+              <a href="/kalendar.ics" className="hover:underline">{t.nav.calendarFeed}</a>
+              <Link href="/admin" className="hover:underline">
+                {t.nav.admin}
+              </Link>
+            </span>
           </div>
         </footer>
       </body>

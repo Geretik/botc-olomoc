@@ -16,9 +16,23 @@ export function registrationSchema(t: Dict["errors"]) {
     email: z.string().trim().toLowerCase().email(t.invalidEmail).max(200),
     arrivalTime: optionalTime,
     departureTime: optionalTime,
+    canStorytell: checkbox,
+    isNewbie: checkbox,
     website: z.string().max(0).optional(), // honeypot
   });
 }
+
+/** <input type="checkbox"> sends "on" when checked and nothing at all otherwise. */
+const checkbox = z
+  .string()
+  .optional()
+  .transform((v) => v === "on" || v === "true" || v === "1");
+
+export const broadcastSchema = z.object({
+  subject: z.string().trim().min(1, "Vyplň předmět").max(200),
+  message: z.string().trim().min(1, "Napiš zprávu").max(5000),
+  includeWaitlist: checkbox,
+});
 
 export function registrationEditSchema(t: Dict["errors"]) {
   return registrationSchema(t).omit({ email: true, website: true });

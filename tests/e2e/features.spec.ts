@@ -1,0 +1,244 @@
+import { expect, test } from "@playwright/test";
+import { adminLogin, createSession, register, resetDb, sql } from "./helpers";
+
+test.describe.configure({ mode: "serial" });
+
+test.beforeEach(async () => {
+  await resetDb();
+});
+
+test("waitlist: full session queues players, cancellation promotes the first one", async ({ page }) => {
+  const id = await createSession({ capacity: 1 });
+  await register(page, id, { nick: "First", email: "first@example.com" });
+
+  // second player lands on the waitlist
+  await page.goto(`/termin/${id}`);
+  await expect(page.locator("main")).toContainText("Zapsat se jako náhradník");
+  const text = await register(page, id, { nick: "Second", email: "second@example.com" });
+  expect(text).toContain("Jsi na seznamu náhradníků jako č. 1");
+  const t3 = await register(page, id, { nick: "Third", email: "third@example.com" });
+  expect(t3).toContain("náhradníků jako č. 2");
+
+  await page.goto(`/termin/${id}`);
+  await expect(page.locator("main")).toContainText("Náhradníci (2)");
+  await page.goto("/");
+  await expect(page.locator("main")).toContainText("Náhradníci (2)");
+
+  // waitlisted player sees their position on the edit page
+  const [w] = await sql<{ edit_token: string; status: string }>(
+    "select edit_token, status from registrations where email='second@example.com'",
+  );
+  expect(w.status).toBe("waitlisted");
+  await page.goto(`/r/${w.edit_token}`);
+  await expect(page.locator("main")).toContainText("Jsi náhradník č. 1");
+
+  // first player cancels → Second is promoted (and gets exactly one e-mail claim), Third moves up
+  const [f] = await sql<{ edit_token: string }>("select edit_token from registrations where email='first@example.com'");
+  page.on("dialog", (d) => d.accept());
+  await page.goto(`/r/${f.edit_token}`);
+  await page.click("button:has-text('Zrušit registraci')");
+  await expect(page.locator("main")).toContainText("Registrace byla zrušena");
+
+  const rows = await sql<{ email: string; status: string; confirmation_sent_at: Date | null }>(
+    "select email, status, confirmation_sent_at from registrations order by email",
+  );
+  expect(rows.map((r) => [r.email, r.status])).toEqual([
+    ["first@example.com", "cancelled"],
+    ["second@example.com", "confirmed"],
+    ["third@example.com", "waitlisted"],
+  ]);
+  const [t] = await sql<{ edit_token: string }>("select edit_token from registrations where email='third@example.com'");
+  await page.goto(`/r/${t.edit_token}`);
+  await expect(page.locator("main")).toContainText("Jsi náhradník č. 1");
+
+  // session is full again with a waitlist → newcomers still queue
+  await page.goto(`/termin/${id}`);
+  await expect(page.locator("main")).toContainText("Plno");
+  await expect(page.locator("main")).toContainText("Zapsat se jako náhradník");
+});
+
+test("waitlist: raising the capacity in admin promotes waitlisted players", async ({ page }) => {
+  const id = await createSession({ capacity: 1 });
+  await register(page, id, { nick: "A", email: "a@example.com" });
+  await register(page, id, { nick: "B", email: "b@example.com" });
+  await register(page, id, { nick: "C", email: "c@example.com" });
+  await adminLogin(page);
+  await page.goto(`/admin/termin/${id}`);
+  await expect(page.locator("main")).toContainText("Náhradníci (2)");
+  await page.fill("#capacity", "2");
+  await page.click("button:has-text('Uložit změny')");
+  await expect(page.locator("main")).toContainText("Uloženo");
+  await expect(page.locator("main")).toContainText("Přihlášení (2 / 2)");
+  await expect(page.locator("main")).toContainText("Náhradníci (1)");
+  const [b] = await sql<{ status: string }>("select status from registrations where email='b@example.com'");
+  expect(b.status).toBe("confirmed");
+
+  // admin override confirms beyond capacity
+  await page.click("li:has-text('c@example.com') button:has-text('Potvrdit')");
+  await expect(page.locator("main")).toContainText("Přihlášení (3 / 2)");
+});
+
+test("storyteller / newbie flags are stored and shown", async ({ page }) => {
+  const id = await createSession({ capacity: 5 });
+  await page.goto(`/termin/${id}`);
+  await page.fill("#firstName", "Sára");
+  await page.fill("#lastName", "Vypravěčka");
+  await page.fill("#nickname", "Sára");
+  await page.fill("#email", "st@example.com");
+  await page.check("#canStorytell");
+  await page.check("#isNewbie");
+  await page.click("main form button[type=submit]");
+  await expect(page.locator("main")).toContainText("Hotovo");
+  const [r] = await sql<{ can_storytell: boolean; is_newbie: boolean }>(
+    "select can_storytell, is_newbie from registrations where email='st@example.com'",
+  );
+  expect(r).toEqual({ can_storytell: true, is_newbie: true });
+  await page.goto(`/termin/${id}`);
+  await expect(page.locator("main li:has-text('Sára')")).toContainText("🎩");
+
+  await adminLogin(page);
+  await page.goto(`/admin/termin/${id}`);
+  await expect(page.locator("main")).toContainText("vypravěči: 1");
+  await expect(page.locator("main")).toContainText("nováčci: 1");
+});
+
+test("calendar: per-session .ics, feed and Google link", async ({ page, request }) => {
+  const id = await createSession({ title: "Kalendářový večer", capacity: 3 });
+  const res = await request.get(`/termin/${id}/kalendar.ics`);
+  expect(res.status()).toBe(200);
+  expect(res.headers()["content-type"]).toContain("text/calendar");
+  const body = await res.text();
+  expect(body).toContain("BEGIN:VCALENDAR");
+  expect(body).toContain("SUMMARY:BotC: Kalendářový večer");
+  expect(body).toContain("LOCATION:Klubovna");
+  expect(body).toContain(`UID:session-${id}@`);
+
+  const feed = await request.get("/kalendar.ics");
+  expect(feed.status()).toBe(200);
+  expect(await feed.text()).toContain("Kalendářový večer");
+
+  await page.goto(`/termin/${id}`);
+  await expect(page.locator("main")).toContainText("Přidat do kalendáře");
+  const google = await page.locator("main a:has-text('Google Kalendář')").getAttribute("href");
+  expect(google).toContain("calendar.google.com/calendar/render");
+  expect(google).toContain("Kalend");
+
+  expect((await request.get("/termin/999999/kalendar.ics")).status()).toBe(404);
+});
+
+test("reminders: cron is protected, sends once per player within the window", async ({ request, page }) => {
+  const soon = await createSession({ title: "Zítra", capacity: 5, daysAhead: 1 });
+  const later = await createSession({ title: "Za týden", capacity: 5, daysAhead: 7 });
+  await register(page, soon, { nick: "S", email: "soon@example.com" });
+  await register(page, later, { nick: "L", email: "later@example.com" });
+
+  expect((await request.get("/api/cron/reminders")).status()).toBe(401);
+  expect((await request.get("/api/cron/reminders", { headers: { authorization: "Bearer wrong" } })).status()).toBe(401);
+
+  const ok = await request.get("/api/cron/reminders", { headers: { authorization: "Bearer e2e-cron" } });
+  expect(ok.status()).toBe(200);
+  expect(await ok.json()).toEqual({ due: 1, sent: 1, failed: 0 });
+
+  const rows = await sql<{ email: string; reminder_sent_at: Date | null }>(
+    "select email, reminder_sent_at from registrations order by email",
+  );
+  expect(rows.find((r) => r.email === "soon@example.com")!.reminder_sent_at).not.toBeNull();
+  expect(rows.find((r) => r.email === "later@example.com")!.reminder_sent_at).toBeNull();
+
+  // second run sends nothing
+  const again = await request.get("/api/cron/reminders", { headers: { authorization: "Bearer e2e-cron" } });
+  expect(await again.json()).toEqual({ due: 0, sent: 0, failed: 0 });
+
+  // admin can trigger reminders for a session outside the window
+  await adminLogin(page);
+  await page.goto(`/admin/termin/${later}`);
+  page.on("dialog", (d) => d.accept());
+  await page.click("button:has-text('Poslat připomínku (1)')");
+  await expect(page.locator("main")).toContainText("Připomínka odeslána 1×");
+  const [l] = await sql<{ reminder_sent_at: Date | null }>("select reminder_sent_at from registrations where email='later@example.com'");
+  expect(l.reminder_sent_at).not.toBeNull();
+});
+
+test("admin: CSV export, attendance, broadcast e-mail, duplicate, stats, Discord not configured", async ({ page, request }) => {
+  const id = await createSession({ title: "Adminový večer", capacity: 4 });
+  await register(page, id, { first: "Petr", last: "Novák", nick: "Péťa", email: "petr@example.com" });
+  await register(page, id, { nick: "Q", email: "q@example.com" });
+
+  // export requires admin
+  expect((await request.get(`/admin/termin/${id}/export.csv`)).status()).toBe(401);
+  await adminLogin(page);
+  const csv = await page.request.get(`/admin/termin/${id}/export.csv`);
+  expect(csv.status()).toBe(200);
+  expect(csv.headers()["content-type"]).toContain("text/csv");
+  const csvText = await csv.text();
+  expect(csvText).toContain("Jméno;Příjmení;Přezdívka;E-mail;Stav");
+  expect(csvText).toContain("Petr;Novák;Péťa;petr@example.com;přihlášen");
+
+  // attendance toggle
+  await page.goto(`/admin/termin/${id}`);
+  await page.click("tr:has-text('petr@example.com') button[title='Dorazil/a']");
+  await expect(page.locator("tr:has-text('petr@example.com') button[title='Dorazil/a']")).toHaveAttribute("aria-pressed", "true");
+  await page.click("tr:has-text('q@example.com') button[title='Nedorazil/a']");
+  await expect(page.locator("main")).toContainText("docházka: 1 dorazilo, 1 nedorazilo");
+  const att = await sql<{ email: string; attended: boolean | null }>("select email, attended from registrations order by email");
+  expect(att).toEqual([
+    { email: "petr@example.com", attended: true },
+    { email: "q@example.com", attended: false },
+  ]);
+
+  // broadcast e-mail (logged only) bumps last_email_at
+  const before = await sql<{ m: Date }>("select max(last_email_at) m from registrations");
+  page.on("dialog", (d) => d.accept());
+  await page.fill("#subject", "Změna místa");
+  await page.fill("#message", "Hrajeme jinde.");
+  await page.click("button:has-text('Odeslat 2 přihlášeným')");
+  await expect(page.locator("main")).toContainText("Odesláno 2 e-mailů");
+  const after = await sql<{ m: Date }>("select max(last_email_at) m from registrations");
+  expect(after[0].m.getTime()).toBeGreaterThan(before[0].m.getTime());
+
+  // Discord without webhook reports it
+  await page.click("button:has-text('Oznámit na Discordu')");
+  await expect(page.locator("main")).toContainText("Discord není nastavený");
+
+  // duplicate prefills form with date one week later
+  await page.click("a:has-text('Duplikovat termín')");
+  await expect(page).toHaveURL(new RegExp(`/admin/novy\\?from=${id}$`));
+  await expect(page.locator("#title")).toHaveValue("Adminový večer");
+  await expect(page.locator("#place")).toHaveValue("Klubovna");
+  const [orig] = await sql<{ starts_at: Date }>("select starts_at from sessions where id=$1", [id]);
+  const startsAt = await page.locator("#startsAt").inputValue();
+  const expectedDay = new Date(orig.starts_at.getTime() + 7 * 864e5);
+  expect(new Date(startsAt + ":00").toISOString().slice(0, 10)).toBe(
+    new Date(expectedDay.getTime() + 2 * 3600_000).toISOString().slice(0, 10), // Prague local date
+  );
+  await page.click("button:has-text('Vytvořit termín')");
+  await page.waitForURL(/\/admin$/);
+  expect(await sql("select id from sessions where title='Adminový večer'")).toHaveLength(2);
+
+  // stats page renders
+  await page.goto("/admin/statistiky");
+  await expect(page.locator("h1")).toHaveText("Statistiky");
+  await expect(page.locator("main")).toContainText("Nadcházejících");
+});
+
+test("archive lists past sessions with player counts", async ({ page }) => {
+  const pastId = await createSession({ title: "Dávný večer", capacity: 5, daysAhead: -10 });
+  await sql("insert into registrations (session_id, first_name, last_name, nickname, email, edit_token) values ($1,'A','B','Nick','old@example.com','tok1')", [pastId]);
+  await createSession({ title: "Budoucí večer", capacity: 5, daysAhead: 5 });
+  await page.goto("/archiv");
+  await expect(page.locator("h1")).toHaveText("Archiv");
+  await expect(page.locator("main")).toContainText("Dávný večer");
+  await expect(page.locator("main")).toContainText("1 hráč");
+  await expect(page.locator("main")).not.toContainText("Budoucí večer");
+  await page.goto(`/termin/${pastId}`);
+  await expect(page.locator("main")).toContainText("Tento termín už proběhl");
+  await expect(page.locator("main")).not.toContainText("Přidat do kalendáře");
+});
+
+test("open graph metadata on session page", async ({ page }) => {
+  const id = await createSession({ title: "OG večer", capacity: 5 });
+  await page.goto(`/termin/${id}`);
+  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", /OG večer/);
+  await expect(page.locator('meta[property="og:description"]')).toHaveAttribute("content", /Klubovna/);
+  await expect(page.locator('meta[property="og:image"]')).toHaveCount(1);
+});

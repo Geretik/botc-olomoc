@@ -48,6 +48,6 @@ export async function register(
   await page.fill("#email", data.email);
   if (data.arrival) await page.fill("#arrivalTime", data.arrival);
   await page.click("main form button[type=submit]");
-  await expect(page.locator("main")).toContainText(/registrovaný|signed up/i, { timeout: 15000 });
+  await expect(page.getByTestId("register-result")).toBeVisible({ timeout: 15000 });
   return page.locator("main").textContent().then((t) => t ?? "");
 }

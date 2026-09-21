@@ -20,6 +20,7 @@ export default async function AdminHomePage() {
         </div>
         <p className="text-sm font-medium">
           {s.confirmedCount} / {s.capacity}
+          {s.waitlistedCount > 0 && <span className="ml-2 text-xs text-muted">+{s.waitlistedCount} náhr.</span>}
         </p>
       </Card>
     </Link>
