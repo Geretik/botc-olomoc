@@ -5,7 +5,7 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { adminInvites, adminUsers, games, registrations, sessions, type AdminRole, type AdminUser } from "@/db/schema";
+import { adminInvites, adminUsers, games, registrations, sessions, tables, type AdminRole, type AdminUser } from "@/db/schema";
 import {
   checkBootstrapPassword,
   clearAdminCookie,
@@ -16,7 +16,8 @@ import {
 import { countAdminUsers, createInvite, getOpenInvite } from "@/lib/admin-users";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { announceSessionOnDiscord } from "@/lib/discord";
-import { sendBroadcastEmail, sendExistingRegistrationEmail } from "@/lib/email";
+import { sendBroadcastEmail, sendExistingRegistrationEmail, sendTableEmail } from "@/lib/email";
+import { autoAssign, createTables, listTables } from "@/lib/tables";
 import { sendDueReminders } from "@/lib/reminders";
 import { getDict } from "@/i18n/server";
 import { inviteUrl } from "@/lib/site";
@@ -389,6 +390,74 @@ export async function broadcastEmailAction(
 }
 
 export type SimpleResult = { ok?: boolean; message?: string };
+
+export async function createTablesAction(sessionId: number, count: number) {
+  await requireAdmin();
+  await createTables(sessionId, Math.min(6, Math.max(2, count)));
+  await autoAssign(sessionId);
+  revalidatePath(`/admin/termin/${sessionId}`);
+}
+
+export async function autoAssignTablesAction(sessionId: number) {
+  await requireAdmin();
+  await autoAssign(sessionId);
+  revalidatePath(`/admin/termin/${sessionId}`);
+}
+
+export async function clearTablesAction(sessionId: number) {
+  await requireAdmin();
+  await db.delete(tables).where(eq(tables.sessionId, sessionId));
+  revalidatePath(`/admin/termin/${sessionId}`);
+}
+
+export async function assignTableAction(registrationId: number, tableId: number | null) {
+  await requireAdmin();
+  const [row] = await db
+    .update(registrations)
+    .set({ tableId })
+    .where(eq(registrations.id, registrationId))
+    .returning({ sessionId: registrations.sessionId });
+  if (row) revalidatePath(`/admin/termin/${row.sessionId}`);
+}
+
+export async function setTableStorytellerAction(tableId: number, formData: FormData) {
+  await requireAdmin();
+  const storyteller = String(formData.get("storyteller") ?? "").trim().slice(0, 200) || null;
+  const [row] = await db.update(tables).set({ storyteller }).where(eq(tables.id, tableId)).returning({ sessionId: tables.sessionId });
+  if (row) revalidatePath(`/admin/termin/${row.sessionId}`);
+}
+
+/** E-mails every assigned player their table number and table mates. */
+export async function sendTablesEmailAction(sessionId: number): Promise<SimpleResult> {
+  await requireAdmin();
+  const { t } = await getDict();
+  const session = await db.query.sessions.findFirst({ where: eq(sessions.id, sessionId) });
+  if (!session) return { message: t.admin.errors.noSession };
+  const list = await listTables(sessionId);
+  let sent = 0;
+  let failed = 0;
+  for (const table of list) {
+    for (const reg of table.players) {
+      const mates = table.players.filter((p) => p.id !== reg.id).map((p) => p.nickname);
+      try {
+        await sendTableEmail(reg, session, table, mates);
+        sent++;
+      } catch (e) {
+        console.error("Table e-mail failed", e);
+        failed++;
+      }
+    }
+    await db.update(tables).set({ notifiedAt: new Date() }).where(eq(tables.id, table.id));
+  }
+  if (sent > 0) {
+    await db
+      .update(registrations)
+      .set({ lastEmailAt: new Date() })
+      .where(and(eq(registrations.sessionId, sessionId), eq(registrations.status, "confirmed")));
+  }
+  revalidatePath(`/admin/termin/${sessionId}`);
+  return { ok: failed === 0, message: t.admin.session.tablesSent(sent, failed) };
+}
 
 export async function addGameAction(sessionId: number, _prev: FormState, formData: FormData): Promise<FormState> {
   await requireAdmin();

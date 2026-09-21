@@ -23,6 +23,9 @@ registraci upravit nebo zrušit.
 - `/r/[token]` – úprava / zrušení registrace přes odkaz z e-mailu
 - `/admin` – správa termínů a přehled přihlášených (účty organizátorů s hashovanými hesly, role správce / organizátor)
 - `/admin/ucty` – účty a pozvánky (jen správce): pozvánka vygeneruje jednorázový odkaz, na kterém si nový organizátor založí účet
+- Hráči: poznámka pro organizátory, výběr příchodu/odchodu po 15 minutách v rámci termínu, zrušení s důvodem, stránka `/moje-hry` (odkaz na přehled registrací e-mailem), sdílení termínu, PWA
+- Organizátoři: vypravěč u termínu, opakující se termíny, rozdělení ke stolům (auto + ručně, e-mail hráčům), evidence odehraných her (archiv, statistiky), soukromý iCal `/admin/kalendar.ics?key=…`, ✉️ nové poslání odkazu hráči, ⚠️ u registrací bez potvrzení
+- Automatika: Discord post „zbývá míst“ dva dny před hrou, upozornění organizátorům (e-mail + Discord) při pozdním odhlášení (<24 h), selhání e-mailu nebo cronu; limit registrací z jedné sítě (`REGISTRATION_RATE_LIMIT`, výchozí 10/h)
 - Termíny jsou rozdělené podle města (Olomouc / Praha): filtr na hlavní stránce i v archivu, kalendář iCal pro každé město zvlášť (`/kalendar.ics?city=praha`)
 - `/admin/statistiky` – obsazenost, docházka, pravidelní hráči
 - `/api/cron/reminders` – denní připomínky (Vercel Cron, viz níže)

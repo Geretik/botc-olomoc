@@ -6,7 +6,12 @@ import {
   adminResendLinkAction,
   adminRestoreRegistrationAction,
   announceDiscordAction,
+  autoAssignTablesAction,
+  clearTablesAction,
+  createTablesAction,
   deleteGameAction,
+  sendTablesEmailAction,
+  setTableStorytellerAction,
   deleteSessionAction,
   sendRemindersNowAction,
   updateSessionAction,
@@ -17,6 +22,7 @@ import { AttendanceToggle } from "@/components/admin/attendance-toggle";
 import { BroadcastForm } from "@/components/admin/broadcast-form";
 import { DeleteSessionButton } from "@/components/admin/delete-session-button";
 import { GameForm } from "@/components/admin/game-form";
+import { TableSelect } from "@/components/admin/table-select";
 import { SessionForm } from "@/components/admin/session-form";
 import { Alert, Button, Card } from "@/components/ui";
 import type { Registration } from "@/db/schema";
@@ -25,6 +31,7 @@ import { getDict } from "@/i18n/server";
 import { discordConfigured } from "@/lib/discord";
 import { getSessionWithCount, listGamesForSession, listRegistrationsForSession } from "@/lib/queries";
 import { countPendingReminders } from "@/lib/reminders";
+import { listTables, tableIssues, TABLE_MAX } from "@/lib/tables";
 import { dateToPragueLocal, formatDate, formatTime } from "@/lib/time";
 import { editUrl } from "@/lib/site";
 
@@ -49,12 +56,13 @@ export default async function AdminSessionPage({
   const { id } = await params;
   const numId = Number(id);
   if (!Number.isInteger(numId)) notFound();
-  const [{ locale, t: dict }, session, regs, pendingReminders, playedGames] = await Promise.all([
+  const [{ locale, t: dict }, session, regs, pendingReminders, playedGames, sessionTables] = await Promise.all([
     getDict(),
     getSessionWithCount(numId),
     listRegistrationsForSession(numId),
     countPendingReminders(numId),
     listGamesForSession(numId),
+    listTables(numId),
   ]);
   if (!session) notFound();
   const t = dict.admin.session;
@@ -70,6 +78,9 @@ export default async function AdminSessionPage({
   const attended = confirmed.filter((r) => r.attended === true).length;
   const noShow = confirmed.filter((r) => r.attended === false).length;
   const unconfirmed = confirmed.filter((r) => !r.confirmationSentAt).length;
+  const tableOptions = sessionTables.map((tb) => ({ id: tb.id, label: t.table(tb.number) }));
+  const unassigned = sessionTables.length ? confirmed.filter((r) => !r.tableId).length : 0;
+  const suggestedTables = Math.max(2, Math.ceil(confirmed.length / TABLE_MAX));
 
   return (
     <div className="flex flex-col gap-8">
@@ -144,6 +155,7 @@ export default async function AdminSessionPage({
                   <th className="p-3">{t.arrival}</th>
                   <th className="p-3">{t.departure}</th>
                   <th className="p-3" title={t.attendance}>{t.attended}</th>
+                  {sessionTables.length > 0 && <th className="p-3">{t.tableColumn}</th>}
                   <th className="p-3"></th>
                 </tr>
               </thead>
@@ -158,6 +170,11 @@ export default async function AdminSessionPage({
                     <td className="p-3">
                       <AttendanceToggle registrationId={r.id} attended={r.attended} labels={{ came: t.came, noShow: t.noShow }} />
                     </td>
+                    {sessionTables.length > 0 && (
+                      <td className="p-3">
+                        <TableSelect registrationId={r.id} tableId={r.tableId} options={tableOptions} noneLabel={t.tableNone} />
+                      </td>
+                    )}
                     <td className="p-3 text-right whitespace-nowrap">
                       <a href={editUrl(r.editToken)} className="mr-3 text-muted hover:underline" target="_blank" rel="noreferrer">{t.link}</a>
                       <span className="mr-3">
@@ -177,7 +194,7 @@ export default async function AdminSessionPage({
                 ))}
                 {confirmed.some((r) => r.note) && (
                   <tr className="bg-border/20 text-xs text-muted">
-                    <td colSpan={7} className="p-3">
+                    <td colSpan={sessionTables.length > 0 ? 8 : 7} className="p-3">
                       <strong>{t.playerNote}:</strong>{" "}
                       {confirmed.filter((r) => r.note).map((r) => `${r.nickname}: „${r.note}“`).join(" · ")}
                     </td>
@@ -238,6 +255,67 @@ export default async function AdminSessionPage({
             ))}
           </ul>
         </section>
+      )}
+
+      {confirmed.length >= 2 && (
+        <Card>
+          <h2 className="mb-1 text-lg font-semibold">🪑 {t.tablesTitle}</h2>
+          <p className="mb-4 text-sm text-muted">{t.tablesHint}</p>
+          <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
+            {[suggestedTables, suggestedTables + 1].map((n) => (
+              <form key={n} action={createTablesAction.bind(null, session.id, n)}>
+                <Button type="submit" variant="secondary">{t.tablesCreate(n)}</Button>
+              </form>
+            ))}
+            {sessionTables.length > 0 && (
+              <>
+                <form action={autoAssignTablesAction.bind(null, session.id)}>
+                  <Button type="submit" variant="secondary">{t.tablesAuto}</Button>
+                </form>
+                <ActionButton
+                  action={sendTablesEmailAction.bind(null, session.id)}
+                  label={t.tablesSend(confirmed.length - unassigned)}
+                  pendingLabel={t.sending}
+                  confirmText={t.tablesSendConfirm}
+                  variant="primary"
+                />
+                <DeleteSessionButton action={clearTablesAction.bind(null, session.id)} label={t.tablesClear} confirmText={t.tablesClearConfirm} />
+                {unassigned > 0 && <span className="text-accent">⚠️ {t.tableUnassigned(unassigned)}</span>}
+              </>
+            )}
+          </div>
+          {sessionTables.length > 0 && (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {sessionTables.map((tb) => {
+                const issues = tableIssues(tb, { tooSmall: t.tableTooSmall, tooBig: t.tableTooBig, noStoryteller: t.tableNoStoryteller });
+                return (
+                  <div key={tb.id} className="flex flex-col gap-2 rounded-xl border border-border p-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <strong>{t.table(tb.number)} · {tb.players.length}</strong>
+                      {tb.notifiedAt && <span className="text-xs text-muted">✉️ {t.tablesNotified}</span>}
+                    </div>
+                    {issues.length > 0 && <p className="text-xs text-accent">⚠️ {issues.join(" · ")}</p>}
+                    <form action={setTableStorytellerAction.bind(null, tb.id)} className="flex gap-2">
+                      <input
+                        name="storyteller"
+                        defaultValue={tb.storyteller ?? ""}
+                        placeholder={`🎩 ${t.tableStoryteller}`}
+                        aria-label={t.tableStoryteller}
+                        className="w-full rounded-md border border-border bg-card px-2 py-1 text-xs"
+                      />
+                      <Button type="submit" variant="secondary">OK</Button>
+                    </form>
+                    <ul className="flex flex-col gap-0.5">
+                      {tb.players.map((p) => (
+                        <li key={p.id}>{p.nickname}<Flags r={p} t={t} /></li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
       )}
 
       <Card>
