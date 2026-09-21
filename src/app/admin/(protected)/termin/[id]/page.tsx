@@ -140,11 +140,11 @@ export default async function AdminSessionPage({
               <tbody>
                 {confirmed.map((r) => (
                   <tr key={r.id} className="border-b border-border last:border-0">
-                    <td className="p-3">{r.firstName} {r.lastName}</td>
-                    <td className="p-3">{r.nickname}<Flags r={r} t={t} /></td>
-                    <td className="p-3"><a href={`mailto:${r.email}`} className="hover:underline">{r.email}</a></td>
-                    <td className="p-3">{r.arrivalTime ?? formatTime(session.startsAt, locale)}</td>
-                    <td className="p-3">{r.departureTime ?? formatTime(session.endsAt, locale)}</td>
+                    <td className="p-3 whitespace-nowrap">{r.firstName} {r.lastName}</td>
+                    <td className="p-3 whitespace-nowrap">{r.nickname}<Flags r={r} t={t} /></td>
+                    <td className="p-3 whitespace-nowrap"><a href={`mailto:${r.email}`} className="hover:underline">{r.email}</a></td>
+                    <td className="p-3 whitespace-nowrap">{r.arrivalTime ?? formatTime(session.startsAt, locale)}</td>
+                    <td className="p-3 whitespace-nowrap">{r.departureTime ?? formatTime(session.endsAt, locale)}</td>
                     <td className="p-3">
                       <AttendanceToggle registrationId={r.id} attended={r.attended} labels={{ came: t.came, noShow: t.noShow }} />
                     </td>
