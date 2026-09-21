@@ -15,7 +15,7 @@ export function SetupForm({ t }: { t: Dict["admin"]["setup"] }) {
       <p className="text-sm text-muted">{t.intro}</p>
       {state.error && <Alert kind="error">{state.error}</Alert>}
       <Field label={t.bootstrapPassword} name="bootstrapPassword" errors={fe.bootstrapPassword}>
-        <input id="bootstrapPassword" name="bootstrapPassword" type="password" required autoFocus className={inputClass} />
+        <input id="bootstrapPassword" name="bootstrapPassword" type="password" required autoFocus autoComplete="off" data-1p-ignore data-lpignore="true" className={inputClass} />
       </Field>
       <AccountFields t={t} fe={fe} />
       <Button type="submit" disabled={pending}>{pending ? t.submitting : t.submit}</Button>

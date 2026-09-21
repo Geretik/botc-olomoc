@@ -1,5 +1,6 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -65,8 +66,11 @@ export async function setupFirstAdminAction(
   const { t } = await getDict();
   const e = t.admin.errors;
   if ((await countAdminUsers()) > 0) return { error: e.setupDone };
-  if (!checkBootstrapPassword(String(formData.get("bootstrapPassword") ?? ""))) {
-    return { error: e.wrongBootstrap, fieldErrors: { bootstrapPassword: [e.wrongBootstrap] } };
+  const bootstrap = String(formData.get("bootstrapPassword") ?? "");
+  if (!checkBootstrapPassword(bootstrap)) {
+    // say what arrived (length + short fingerprint, never the value) so a browser autofill or a stray space is visible
+    const received = `${bootstrap.length} / ${createHash("sha256").update(bootstrap).digest("hex").slice(0, 6)}`;
+    return { error: `${e.wrongBootstrap} (${e.received}: ${received})`, fieldErrors: { bootstrapPassword: [e.wrongBootstrap] } };
   }
   const parsed = accountSchema(e).safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) return { error: e.checkForm, fieldErrors: fieldErrorsOf(parsed.error) };
