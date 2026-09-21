@@ -34,6 +34,14 @@ async function send(to: string, subject: string, html: string, text: string) {
   }
 }
 
+/** Magic link to the player's overview of their sign-ups. */
+export async function sendMyGamesLinkEmail(email: string, url: string, locale: Locale) {
+  const t = dictionaries[locale];
+  const text = `${t.email.hi("")}\n\n${t.myGames.emailBody}\n${url}`;
+  const html = `<p>${escapeHtml(t.myGames.emailBody)}</p><p><a href="${url}">${url}</a></p>`;
+  await send(email, t.myGames.emailSubject, html, text);
+}
+
 /** Plain-text message, used for organiser alerts. */
 export async function sendPlainEmail(to: string, subject: string, text: string) {
   await send(to, subject, `<p style="white-space:pre-line">${escapeHtml(text)}</p>`, text);

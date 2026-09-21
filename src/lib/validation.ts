@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { adminRoles, cities } from "@/db/schema";
+import { adminRoles, cities, gameWinners } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import { PASSWORD_MIN_LENGTH } from "./password";
 import { formatTime, TIME_RE } from "./time";
@@ -107,6 +107,38 @@ export function accountSchema(t: Dict["admin"]["errors"]) {
       passwordAgain: z.string(),
     })
     .refine((v) => v.password === v.passwordAgain, { message: t.passwordsDiffer, path: ["passwordAgain"] });
+}
+
+/** Series of identical sessions: interval in weeks (0 = none) and total count. */
+export const repeatSchema = z.object({
+  repeatWeeks: z.coerce.number().int().min(0).max(8).default(0),
+  repeatCount: z.coerce.number().int().min(1).max(12).default(1),
+});
+
+export function gameSchema(t: Dict["admin"]["errors"]) {
+  return z.object({
+    scriptName: z.string().trim().min(1, t.fillScript).max(200),
+    // absent when the script was typed instead of picked
+    scriptUrl: z
+      .string()
+      .max(2000)
+      .optional()
+      .transform((v) => (v?.trim() ? v.trim() : null)),
+    winner: z
+      .string()
+      .transform((v) => (v === "" ? null : v))
+      .pipe(z.enum(gameWinners).nullable()),
+    players: z
+      .string()
+      .trim()
+      .transform((v) => (v === "" ? null : Number(v)))
+      .pipe(z.number().int().min(5).max(20).nullable()),
+    notes: z
+      .string()
+      .trim()
+      .max(1000)
+      .transform((v) => (v === "" ? null : v)),
+  });
 }
 
 export const inviteSchema = z.object({

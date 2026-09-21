@@ -63,6 +63,21 @@ export function SessionForm({
         <textarea id="note" name="note" rows={3} defaultValue={session?.note ?? ""} className={inputClass} />
       </Field>
       <ScriptsFields initial={session?.scripts ?? []} errors={fe.scripts} t={t} />
+      {mode === "create" && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={t.repeat} name="repeatWeeks" hint={t.repeatHint}>
+            <select id="repeatWeeks" name="repeatWeeks" defaultValue="0" className={inputClass}>
+              <option value="0">{t.repeatNone}</option>
+              <option value="1">{t.repeatEvery}</option>
+              <option value="2">{t.repeatEvery2}</option>
+              <option value="4">{t.repeatEvery4}</option>
+            </select>
+          </Field>
+          <Field label={t.repeatCount} name="repeatCount">
+            <input id="repeatCount" name="repeatCount" type="number" min={1} max={12} defaultValue={4} className={inputClass} />
+          </Field>
+        </div>
+      )}
       {mode === "create" && discordConfigured && (
         <Checkbox name="announceDiscord" label={t.announceDiscord} hint={t.announceDiscordHint} defaultChecked />
       )}

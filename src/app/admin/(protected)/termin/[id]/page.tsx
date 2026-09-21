@@ -6,6 +6,7 @@ import {
   adminResendLinkAction,
   adminRestoreRegistrationAction,
   announceDiscordAction,
+  deleteGameAction,
   deleteSessionAction,
   sendRemindersNowAction,
   updateSessionAction,
@@ -15,13 +16,14 @@ import { CityBadge } from "@/components/city";
 import { AttendanceToggle } from "@/components/admin/attendance-toggle";
 import { BroadcastForm } from "@/components/admin/broadcast-form";
 import { DeleteSessionButton } from "@/components/admin/delete-session-button";
+import { GameForm } from "@/components/admin/game-form";
 import { SessionForm } from "@/components/admin/session-form";
 import { Alert, Button, Card } from "@/components/ui";
 import type { Registration } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import { getDict } from "@/i18n/server";
 import { discordConfigured } from "@/lib/discord";
-import { getSessionWithCount, listRegistrationsForSession } from "@/lib/queries";
+import { getSessionWithCount, listGamesForSession, listRegistrationsForSession } from "@/lib/queries";
 import { countPendingReminders } from "@/lib/reminders";
 import { dateToPragueLocal, formatDate, formatTime } from "@/lib/time";
 import { editUrl } from "@/lib/site";
@@ -47,11 +49,12 @@ export default async function AdminSessionPage({
   const { id } = await params;
   const numId = Number(id);
   if (!Number.isInteger(numId)) notFound();
-  const [{ locale, t: dict }, session, regs, pendingReminders] = await Promise.all([
+  const [{ locale, t: dict }, session, regs, pendingReminders, playedGames] = await Promise.all([
     getDict(),
     getSessionWithCount(numId),
     listRegistrationsForSession(numId),
     countPendingReminders(numId),
+    listGamesForSession(numId),
   ]);
   if (!session) notFound();
   const t = dict.admin.session;
@@ -236,6 +239,46 @@ export default async function AdminSessionPage({
           </ul>
         </section>
       )}
+
+      <Card>
+        <h2 className="mb-1 text-lg font-semibold">🎲 {t.gamesTitle}</h2>
+        <p className="mb-4 text-sm text-muted">{t.gamesHint}</p>
+        {playedGames.length === 0 && <p className="mb-4 text-sm text-muted">{t.gamesNone}</p>}
+        {playedGames.length > 0 && (
+          <ol className="mb-4 flex flex-col gap-2 text-sm">
+            {playedGames.map((g, i) => (
+              <li key={g.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border px-3 py-2">
+                <span>
+                  <span className="mr-2 font-semibold text-muted">{i + 1}.</span>
+                  {g.scriptUrl ? <a href={g.scriptUrl} className="hover:underline" target="_blank" rel="noreferrer">{g.scriptName}</a> : g.scriptName}
+                  {g.winner && <> · {g.winner === "good" ? "😇" : "😈"} {dict.archive.winner[g.winner]}</>}
+                  {g.players && <span className="text-muted"> · {dict.archive.gamePlayers(g.players)}</span>}
+                  {g.notes && <span className="text-muted"> · {g.notes}</span>}
+                </span>
+                <form action={deleteGameAction.bind(null, g.id)}>
+                  <Button type="submit" variant="danger">{t.gameDelete}</Button>
+                </form>
+              </li>
+            ))}
+          </ol>
+        )}
+        <GameForm
+          sessionId={session.id}
+          scripts={session.scripts}
+          t={{
+            gameScript: t.gameScript,
+            gameScriptCustom: t.gameScriptCustom,
+            gameWinner: t.gameWinner,
+            gameWinnerUnknown: t.gameWinnerUnknown,
+            gameWinnerGood: t.gameWinnerGood,
+            gameWinnerEvil: t.gameWinnerEvil,
+            gamePlayers: t.gamePlayers,
+            gameNotes: t.gameNotes,
+            gameAdd: t.gameAdd,
+            gameAdding: t.gameAdding,
+          }}
+        />
+      </Card>
 
       {!past && (
         <Card>

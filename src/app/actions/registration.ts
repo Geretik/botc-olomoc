@@ -12,6 +12,7 @@ import { registrations, sessions } from "@/db/schema";
 import {
   sendConfirmationEmail,
   sendExistingRegistrationEmail,
+  sendMyGamesLinkEmail,
   sendWaitlistEmail,
 } from "@/lib/email";
 import { generateEditToken } from "@/lib/token";
@@ -22,7 +23,8 @@ import {
   timeRangeErrors,
   type FormState,
 } from "@/lib/validation";
-import { getRegistrationByToken } from "@/lib/queries";
+import { getRegistrationByToken, listRegistrationsByEmail } from "@/lib/queries";
+import { createMyGamesToken } from "@/lib/my-games-token";
 import { promoteWaitlist } from "@/lib/waitlist";
 import { getDict } from "@/i18n/server";
 
@@ -264,6 +266,24 @@ export async function updateRegistrationAction(
     )
     .returning({ id: registrations.id });
   if (!updated) return { error: t.errors.regNotFound };
+  return { ok: true };
+}
+
+/** Sends the "my games" magic link when the e-mail has any registration; always answers the same. */
+export async function requestMyGamesLinkAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const { locale, t } = await getDict();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: t.errors.invalidEmail, fieldErrors: { email: [t.errors.invalidEmail] } };
+  const ipHash = await clientIpHash();
+  if (ipHash && (await recentSignupsFrom(ipHash)) >= RATE_LIMIT_PER_HOUR) return { error: t.errors.rateLimited };
+  const regs = await listRegistrationsByEmail(email);
+  if (regs.length > 0) {
+    try {
+      await sendMyGamesLinkEmail(email, `${siteUrl()}/moje-hry/${createMyGamesToken(email)}`, locale);
+    } catch (e) {
+      console.error("My-games link e-mail failed", e);
+    }
+  }
   return { ok: true };
 }
 

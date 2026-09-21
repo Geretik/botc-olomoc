@@ -93,8 +93,33 @@ export const registrations = pgTable(
   ],
 );
 
+export const gameWinners = ["good", "evil"] as const;
+export type GameWinner = (typeof gameWinners)[number];
+
+/** One played game of an evening: which script, who won, notes. Filled in by organisers afterwards. */
+export const games = pgTable("games", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id")
+    .notNull()
+    .references(() => sessions.id, { onDelete: "cascade" }),
+  scriptName: text("script_name").notNull(),
+  scriptUrl: text("script_url"),
+  winner: text("winner", { enum: gameWinners }),
+  /** Number of players at the table (optional) */
+  players: integer("players"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type Game = typeof games.$inferSelect;
+
+export const gamesRelations = relations(games, ({ one }) => ({
+  session: one(sessions, { fields: [games.sessionId], references: [sessions.id] }),
+}));
+
 export const sessionsRelations = relations(sessions, ({ many }) => ({
   registrations: many(registrations),
+  games: many(games),
 }));
 
 export const registrationsRelations = relations(registrations, ({ one }) => ({

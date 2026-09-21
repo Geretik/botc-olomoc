@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E } from "../../playwright.config";
+import { createMyGamesToken } from "../../src/lib/my-games-token";
 import { adminLogin, createSession, register, resetDb, sql } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
@@ -423,4 +424,62 @@ test("organisers' calendar feed is private and lists players; cron endpoint runs
   const cron = await page.request.get("/api/cron/reminders");
   expect(cron.ok()).toBeTruthy();
   expect(await cron.json()).toMatchObject({ reminders: expect.any(Object), spots: { posted: 0 } });
+});
+
+test("recurring sessions, games record shown in archive and stats", async ({ page }) => {
+  await adminLogin(page);
+  await page.goto("/admin/novy");
+  await page.fill("#title", "Úterky");
+  await page.fill("#startsAt", "2031-03-04T18:00");
+  await page.fill("#endsAt", "2031-03-04T22:00");
+  await page.fill("#place", "Klub");
+  await page.selectOption("#repeatWeeks", "2");
+  await page.fill("#repeatCount", "3");
+  await page.click("button:has-text('Vytvořit termín')");
+  await page.waitForURL(/\/admin$/);
+  const rows = await sql<{ starts_at: Date }>("select starts_at from sessions where title='Úterky' order by starts_at");
+  expect(rows.map((r) => r.starts_at.toISOString().slice(0, 10))).toEqual(["2031-03-04", "2031-03-18", "2031-04-01"]);
+
+  // a past session gets two games recorded
+  const pastId = await createSession({ title: "Hraný večer", capacity: 8, daysAhead: -3 });
+  await sql("update sessions set scripts=$1 where id=$2", [JSON.stringify([{ name: "Trouble Brewing", url: "https://botcscripts.com/tb" }]), pastId]);
+  await page.goto(`/admin/termin/${pastId}`);
+  await page.selectOption("#winner", "good");
+  await page.fill("#players", "9");
+  await page.click("button:has-text('Přidat hru')");
+  await expect(page.locator("main")).toContainText("1.Trouble Brewing");
+  await page.selectOption("#scriptPick", "__custom");
+  await page.fill("form:has(#scriptPick) input[name=scriptName]", "Bad Moon Rising");
+  await page.selectOption("#winner", "evil");
+  await page.click("button:has-text('Přidat hru')");
+  await expect(page.locator("main")).toContainText("2.Bad Moon Rising");
+
+  await page.goto("/archiv");
+  await expect(page.locator("main")).toContainText("Trouble Brewing · 😇 vyhrálo dobro · 9 hráčů");
+  await expect(page.locator("main")).toContainText("Bad Moon Rising · 😈 vyhrálo zlo");
+
+  await page.goto("/admin/statistiky");
+  await expect(page.locator("main")).toContainText("Her celkem2");
+  await expect(page.locator("main")).toContainText("Trouble Brewing11 / 0");
+});
+
+test("my games: magic link lists the player's sign-ups", async ({ page }) => {
+  const id = await createSession({ title: "Můj večer", capacity: 4 });
+  await register(page, id, { nick: "Já", email: "me@example.com" });
+
+  // requesting a link always answers the same way
+  await page.goto("/moje-hry");
+  await page.fill("#email", "me@example.com");
+  await page.click("main button[type=submit]");
+  await expect(page.locator("main")).toContainText("odkaz ti přišel");
+
+  process.env.ADMIN_SECRET = "e2e-secret"; // same as the e2e server, so the token verifies
+  await page.goto(`/moje-hry/${createMyGamesToken("me@example.com")}`);
+  await expect(page.locator("h1")).toHaveText("Moje hry");
+  await expect(page.locator("main")).toContainText("Můj večer");
+  await expect(page.locator("main")).toContainText("přihlášen/a");
+  await expect(page.locator("main a:has-text('Upravit / zrušit')")).toBeVisible();
+
+  await page.goto("/moje-hry/neplatny.token.xyz");
+  await expect(page.locator("main")).toContainText("Odkaz je neplatný");
 });

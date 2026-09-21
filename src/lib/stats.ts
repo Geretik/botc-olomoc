@@ -1,6 +1,6 @@
 import { and, desc, eq, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { registrations, sessions } from "@/db/schema";
+import { games, registrations, sessions } from "@/db/schema";
 
 export type PastSessionStats = {
   id: number;
@@ -62,6 +62,35 @@ export async function regulars(limit = 20): Promise<Regular[]> {
     .orderBy(desc(sql`count(*)`), desc(sql`max(${sessions.startsAt})`))
     .limit(limit);
   return rows.map((r) => ({ ...r, lastAt: new Date(r.lastAt) }));
+}
+
+export type GameStats = {
+  total: number;
+  good: number;
+  evil: number;
+  scripts: { name: string; played: number; good: number; evil: number }[];
+};
+
+export async function gameStats(): Promise<GameStats> {
+  const [tot] = await db
+    .select({
+      total: sql<number>`count(*)::int`,
+      good: sql<number>`count(*) filter (where ${games.winner} = 'good')::int`,
+      evil: sql<number>`count(*) filter (where ${games.winner} = 'evil')::int`,
+    })
+    .from(games);
+  const scripts = await db
+    .select({
+      name: games.scriptName,
+      played: sql<number>`count(*)::int`,
+      good: sql<number>`count(*) filter (where ${games.winner} = 'good')::int`,
+      evil: sql<number>`count(*) filter (where ${games.winner} = 'evil')::int`,
+    })
+    .from(games)
+    .groupBy(games.scriptName)
+    .orderBy(desc(sql`count(*)`), games.scriptName)
+    .limit(15);
+  return { ...tot, scripts };
 }
 
 export type Totals = {

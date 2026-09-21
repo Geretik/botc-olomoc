@@ -61,6 +61,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <div className="mx-auto max-w-3xl px-4 py-4 text-sm text-muted flex justify-between">
             <span>{t.nav.footer}</span>
             <span className="flex gap-4">
+              <Link href="/moje-hry" className="hover:underline">{t.nav.myGames}</Link>
               <a href="/kalendar.ics" className="hover:underline">{t.nav.calendarFeed}</a>
               <Link href="/admin" className="hover:underline">
                 {t.nav.admin}

@@ -1,6 +1,6 @@
-import { and, asc, desc, eq, gte, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { type City, registrations, sessions } from "@/db/schema";
+import { type City, games, registrations, sessions } from "@/db/schema";
 
 export type SessionWithCount = typeof sessions.$inferSelect & {
   confirmedCount: number;
@@ -101,6 +101,31 @@ export async function listPublicPlayers(
     .orderBy(
       status === "waitlisted" ? asc(registrations.waitlistedAt) : asc(registrations.createdAt),
     );
+}
+
+export async function listGamesForSession(sessionId: number) {
+  return db.query.games.findMany({ where: eq(games.sessionId, sessionId), orderBy: [asc(games.createdAt)] });
+}
+
+/** Games of many sessions at once, keyed by session id (archive). */
+export async function gamesBySession(sessionIds: number[]) {
+  if (sessionIds.length === 0) return new Map<number, (typeof games.$inferSelect)[]>();
+  const rows = await db.query.games.findMany({
+    where: inArray(games.sessionId, sessionIds),
+    orderBy: [asc(games.createdAt)],
+  });
+  const map = new Map<number, typeof rows>();
+  for (const g of rows) map.set(g.sessionId, [...(map.get(g.sessionId) ?? []), g]);
+  return map;
+}
+
+/** All registrations of one player (by e-mail), newest session first, with the session. */
+export async function listRegistrationsByEmail(email: string) {
+  return db.query.registrations.findMany({
+    where: eq(sql`lower(${registrations.email})`, email.toLowerCase()),
+    with: { session: true },
+    orderBy: [desc(registrations.createdAt)],
+  });
 }
 
 /** 1-based position of a waitlisted registration in the queue. */

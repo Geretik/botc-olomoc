@@ -5,7 +5,7 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { adminInvites, adminUsers, registrations, sessions, type AdminRole, type AdminUser } from "@/db/schema";
+import { adminInvites, adminUsers, games, registrations, sessions, type AdminRole, type AdminUser } from "@/db/schema";
 import {
   checkBootstrapPassword,
   clearAdminCookie,
@@ -25,7 +25,9 @@ import {
   accountSchema,
   broadcastSchema,
   fieldErrorsOf,
+  gameSchema,
   inviteSchema,
+  repeatSchema,
   parseScripts,
   sessionSchema,
   type FormState,
@@ -206,7 +208,15 @@ export async function createSessionAction(
   await requireAdmin();
   const r = await parseSessionForm(formData);
   if (r.error) return { error: r.message, fieldErrors: r.error };
-  const [created] = await db.insert(sessions).values(r.values).returning();
+  // optional series: the same session every N weeks, `repeatCount` times in total
+  const repeat = repeatSchema.safeParse(Object.fromEntries(formData.entries()));
+  const weeks = repeat.success ? repeat.data.repeatWeeks : 0;
+  const count = repeat.success && weeks > 0 ? repeat.data.repeatCount : 1;
+  const rows = Array.from({ length: count }, (_, i) => {
+    const shift = i * weeks * 7 * 864e5;
+    return { ...r.values, startsAt: new Date(r.values.startsAt.getTime() + shift), endsAt: new Date(r.values.endsAt.getTime() + shift) };
+  });
+  const [created] = await db.insert(sessions).values(rows).returning();
   if (formData.get("announceDiscord") === "on") {
     await announceSessionOnDiscord(created, created.capacity);
   }
@@ -379,6 +389,26 @@ export async function broadcastEmailAction(
 }
 
 export type SimpleResult = { ok?: boolean; message?: string };
+
+export async function addGameAction(sessionId: number, _prev: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const { t } = await getDict();
+  const parsed = gameSchema(t.admin.errors).safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) return { error: t.admin.errors.checkForm, fieldErrors: fieldErrorsOf(parsed.error) };
+  await db.insert(games).values({ sessionId, ...parsed.data });
+  revalidatePath(`/admin/termin/${sessionId}`);
+  revalidatePath("/archiv");
+  return { ok: true };
+}
+
+export async function deleteGameAction(gameId: number) {
+  await requireAdmin();
+  const [row] = await db.delete(games).where(eq(games.id, gameId)).returning({ sessionId: games.sessionId });
+  if (row) {
+    revalidatePath(`/admin/termin/${row.sessionId}`);
+    revalidatePath("/archiv");
+  }
+}
 
 export async function sendRemindersNowAction(sessionId: number): Promise<SimpleResult> {
   await requireAdmin();

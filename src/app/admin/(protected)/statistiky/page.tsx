@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
-import { pastSessionStats, regulars, totals } from "@/lib/stats";
+import { gameStats, pastSessionStats, regulars, totals } from "@/lib/stats";
 import { formatDate } from "@/lib/time";
 
 function pct(v: number | null) {
@@ -9,7 +9,7 @@ function pct(v: number | null) {
 }
 
 export default async function StatsPage() {
-  const [{ locale, t }, sums, past, top] = await Promise.all([getDict(), totals(), pastSessionStats(), regulars()]);
+  const [{ locale, t }, sums, past, top, g] = await Promise.all([getDict(), totals(), pastSessionStats(), regulars(), gameStats()]);
   const s = t.admin.stats;
 
   const tiles: [string, string | number][] = [
@@ -59,6 +59,40 @@ export default async function StatsPage() {
                     <td className="p-3 text-right">{pct(Math.min(1, row.confirmed / row.capacity))}</td>
                     <td className="p-3 text-right">{row.marked ? `${row.attended} / ${row.marked}` : "–"}</td>
                     <td className="p-3 text-right">{row.newbies}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold">🎲 {s.gamesHeading}</h2>
+        <div className="grid grid-cols-3 gap-3">
+          {([[s.gamesTotal, g.total], [`😇 ${s.goodWins}`, g.good], [`😈 ${s.evilWins}`, g.evil]] as [string, number][]).map(([label, value]) => (
+            <Card key={label} className="flex flex-col gap-1">
+              <span className="text-xs text-muted">{label}</span>
+              <span className="text-2xl font-bold">{value}</span>
+            </Card>
+          ))}
+        </div>
+        {g.scripts.length > 0 && (
+          <div className="overflow-x-auto rounded-xl border border-border bg-card">
+            <table className="w-full text-sm">
+              <thead className="text-left text-muted">
+                <tr className="border-b border-border">
+                  <th className="p-3">{s.script}</th>
+                  <th className="p-3 text-right">{s.timesPlayed}</th>
+                  <th className="p-3 text-right">{s.goodEvil}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {g.scripts.map((row) => (
+                  <tr key={row.name} className="border-b border-border last:border-0">
+                    <td className="p-3">{row.name}</td>
+                    <td className="p-3 text-right">{row.played}</td>
+                    <td className="p-3 text-right">{row.good} / {row.evil}</td>
                   </tr>
                 ))}
               </tbody>

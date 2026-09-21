@@ -4,7 +4,7 @@ import { CityBadge, CityTabs, isCity } from "@/components/city";
 import { ScriptLinks } from "@/components/script-links";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
-import { listPastSessions } from "@/lib/queries";
+import { gamesBySession, listPastSessions } from "@/lib/queries";
 import { formatDate } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +18,7 @@ export default async function ArchivePage({ searchParams }: { searchParams: Prom
   const { city: cityParam } = await searchParams;
   const city = isCity(cityParam) ? cityParam : undefined;
   const [sessions, { locale, t }] = await Promise.all([listPastSessions(city), getDict()]);
+  const played = await gamesBySession(sessions.map((s) => s.id));
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -50,6 +51,18 @@ export default async function ArchivePage({ searchParams }: { searchParams: Prom
                   </p>
                 )}
                 <ScriptLinks scripts={s.scripts} label={t.session.scripts(s.scripts.length)} />
+                {(played.get(s.id)?.length ?? 0) > 0 && (
+                  <ul className="mt-1 flex flex-col gap-0.5 text-sm">
+                    {played.get(s.id)!.map((g) => (
+                      <li key={g.id}>
+                        <span aria-hidden className="mr-1.5">🎲</span>
+                        {g.scriptUrl ? <a href={g.scriptUrl} className="hover:underline" target="_blank" rel="noreferrer">{g.scriptName}</a> : g.scriptName}
+                        {g.winner && <span className="text-muted"> · {g.winner === "good" ? "😇" : "😈"} {t.archive.winner[g.winner]}</span>}
+                        {g.players && <span className="text-muted"> · {t.archive.gamePlayers(g.players)}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </Card>
             </li>
           ))}
