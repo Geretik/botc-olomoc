@@ -70,6 +70,9 @@ export function RegistrationForm({
       <Field label={t.email} name="email" errors={fe.email} hint={t.emailHint}>
         <input id="email" name="email" type="email" required className={inputClass} autoComplete="email" />
       </Field>
+      <Field label={t.phone} name="phone" errors={fe.phone} hint={t.phoneHint}>
+        <input id="phone" name="phone" type="tel" required className={inputClass} autoComplete="tel" placeholder="+420 777 123 456" />
+      </Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t.arrival} name="arrivalTime" errors={fe.arrivalTime} hint={t.arrivalHint}>
           <TimeSelect

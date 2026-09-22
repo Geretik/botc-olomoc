@@ -34,6 +34,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     r.lastName,
     r.nickname,
     r.email,
+    r.phone,
     t.status[r.status] ?? r.status,
     r.arrivalTime ?? formatTime(session.startsAt, locale),
     r.departureTime ?? formatTime(session.endsAt, locale),

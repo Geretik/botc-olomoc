@@ -87,6 +87,7 @@ test("storyteller / newbie flags are stored and shown", async ({ page }) => {
   await page.fill("#lastName", "Vypravěčka");
   await page.fill("#nickname", "Sára");
   await page.fill("#email", "st@example.com");
+  await page.fill("#phone", "777 123 456");
   await page.check("#canStorytell");
   await page.check("#isNewbie");
   await page.click("main form button[type=submit]");
@@ -173,8 +174,8 @@ test("admin: CSV export, attendance, broadcast e-mail, duplicate, stats, Discord
   expect(csv.status()).toBe(200);
   expect(csv.headers()["content-type"]).toContain("text/csv");
   const csvText = await csv.text();
-  expect(csvText).toContain("Jméno;Příjmení;Přezdívka;E-mail;Stav");
-  expect(csvText).toContain("Petr;Novák;Péťa;petr@example.com;přihlášen");
+  expect(csvText).toContain("Jméno;Příjmení;Přezdívka;E-mail;Telefon;Stav");
+  expect(csvText).toContain("Petr;Novák;Péťa;petr@example.com;+420777123456;přihlášen");
 
   // attendance toggle
   await page.goto(`/admin/termin/${id}`);
@@ -514,4 +515,38 @@ test("tables: create, auto-assign with a storyteller per table, manual move, e-m
   await page.click("button:has-text('Poslat rozdělení e-mailem (4)')");
   await expect(page.locator("main")).toContainText("Rozdělení odesláno 4×");
   await expect(page.locator("main")).toContainText("e-maily odeslány");
+});
+
+test("phone is required, normalised and shown only to organisers; hourly presence overview", async ({ page }) => {
+  const id = await createSession({ capacity: 5 });
+  // missing phone → validation error, nothing saved
+  await page.goto(`/termin/${id}`);
+  await page.fill("#firstName", "Bez");
+  await page.fill("#lastName", "Telefonu");
+  await page.fill("#nickname", "Bez");
+  await page.fill("#email", "bez@example.com");
+  await page.fill("#phone", "abc");
+  await page.click("main form button[type=submit]");
+  await expect(page.locator("main")).toContainText("Zadej platné telefonní číslo");
+  expect(await sql("select id from registrations where email='bez@example.com'")).toHaveLength(0);
+
+  // session is 19:00–23:00 Prague (17:00 UTC + 4 h)
+  await register(page, id, { nick: "Celý", email: "cely@example.com", phone: "+420 777 123 456" });
+  await register(page, id, { nick: "Pozdní", email: "pozdni@example.com", phone: "777-000-111", arrival: "20:30" });
+  const [r] = await sql<{ phone: string }>("select phone from registrations where email='pozdni@example.com'");
+  expect(r.phone).toBe("777000111");
+
+  // never on the public page
+  await page.goto(`/termin/${id}`);
+  await expect(page.locator("main")).not.toContainText("777123456");
+
+  await adminLogin(page);
+  await page.goto(`/admin/termin/${id}`);
+  await expect(page.locator("main table")).toContainText("+420777123456");
+  const rows = page.getByTestId("presence").locator("li");
+  await expect(rows).toHaveCount(4);
+  expect(await rows.locator("> span:first-child").allTextContents()).toEqual(["19:00–20:00", "20:00–21:00", "21:00–22:00", "22:00–23:00"]);
+  expect(await rows.locator("strong").allTextContents()).toEqual(["1", "2", "2", "2"]);
+  await expect(rows.nth(0)).not.toContainText("všichni");
+  await expect(rows.nth(1)).toContainText("všichni");
 });

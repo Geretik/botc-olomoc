@@ -4,6 +4,9 @@ import type { Dict } from "@/i18n/dictionaries";
 import { PASSWORD_MIN_LENGTH } from "./password";
 import { formatTime, TIME_RE } from "./time";
 
+/** Optional "+" followed by 9–15 digits (after removing spaces, dashes and parentheses). */
+export const PHONE_RE = /^\+?\d{9,15}$/;
+
 export function registrationSchema(t: Dict["errors"]) {
   const optionalTime = z
     .string()
@@ -16,6 +19,14 @@ export function registrationSchema(t: Dict["errors"]) {
     lastName: z.string().trim().min(1, t.fillLastName).max(100),
     nickname: z.string().trim().min(1, t.fillNickname).max(100),
     email: z.string().trim().toLowerCase().email(t.invalidEmail).max(200),
+    phone: z
+      .string()
+      .trim()
+      .min(1, t.fillPhone)
+      .max(30)
+      // "+420 777 123 456" → "+420777123456"
+      .transform((v) => v.replace(/[\s().-]/g, ""))
+      .pipe(z.string().regex(PHONE_RE, t.invalidPhone)),
     arrivalTime: optionalTime,
     departureTime: optionalTime,
     canStorytell: checkbox,

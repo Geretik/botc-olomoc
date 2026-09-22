@@ -155,6 +155,7 @@ export async function registerAction(
         firstName: data.firstName,
         lastName: data.lastName,
         nickname: data.nickname,
+        phone: data.phone,
         arrivalTime: data.arrivalTime,
         departureTime: data.departureTime,
         note: data.note ?? null,

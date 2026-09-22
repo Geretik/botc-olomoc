@@ -63,6 +63,8 @@ export const registrations = pgTable(
     lastName: text("last_name").notNull(),
     nickname: text("nickname").notNull(),
     email: text("email").notNull(),
+    /** Contact phone for the organisers (required in the form; null only for registrations older than the field) */
+    phone: text("phone"),
     /** "HH:MM" in Europe/Prague, null = same as session start */
     arrivalTime: text("arrival_time"),
     /** "HH:MM" in Europe/Prague, null = same as session end */

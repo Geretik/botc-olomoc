@@ -22,6 +22,7 @@ import { AttendanceToggle } from "@/components/admin/attendance-toggle";
 import { BroadcastForm } from "@/components/admin/broadcast-form";
 import { DeleteSessionButton } from "@/components/admin/delete-session-button";
 import { GameForm } from "@/components/admin/game-form";
+import { PresenceChart } from "@/components/admin/presence-chart";
 import { TableSelect } from "@/components/admin/table-select";
 import { SessionForm } from "@/components/admin/session-form";
 import { Alert, Button, Card } from "@/components/ui";
@@ -30,6 +31,7 @@ import type { Dict } from "@/i18n/dictionaries";
 import { getDict } from "@/i18n/server";
 import { discordConfigured } from "@/lib/discord";
 import { getSessionWithCount, listGamesForSession, listRegistrationsForSession } from "@/lib/queries";
+import { presenceByHour } from "@/lib/presence";
 import { countPendingReminders } from "@/lib/reminders";
 import { listTables, tableIssues, TABLE_MAX } from "@/lib/tables";
 import { dateToPragueLocal, formatDate, formatTime } from "@/lib/time";
@@ -81,6 +83,7 @@ export default async function AdminSessionPage({
   const tableOptions = sessionTables.map((tb) => ({ id: tb.id, label: t.table(tb.number) }));
   const unassigned = sessionTables.length ? confirmed.filter((r) => !r.tableId).length : 0;
   const suggestedTables = Math.max(2, Math.ceil(confirmed.length / TABLE_MAX));
+  const presence = presenceByHour(session, confirmed);
 
   return (
     <div className="flex flex-col gap-8">
@@ -152,6 +155,7 @@ export default async function AdminSessionPage({
                   <th className="p-3">{t.name}</th>
                   <th className="p-3">{t.nickname}</th>
                   <th className="p-3">{t.email}</th>
+                  <th className="p-3">{t.phone}</th>
                   <th className="p-3">{t.arrival}</th>
                   <th className="p-3">{t.departure}</th>
                   <th className="p-3" title={t.attendance}>{t.attended}</th>
@@ -165,6 +169,7 @@ export default async function AdminSessionPage({
                     <td className="p-3 whitespace-nowrap">{r.firstName} {r.lastName}</td>
                     <td className="p-3 whitespace-nowrap">{r.nickname}<Flags r={r} t={t} /></td>
                     <td className="p-3 whitespace-nowrap"><a href={`mailto:${r.email}`} className="hover:underline">{r.email}</a></td>
+                    <td className="p-3 whitespace-nowrap">{r.phone ? <a href={`tel:${r.phone}`} className="hover:underline">{r.phone}</a> : <span className="text-muted">–</span>}</td>
                     <td className="p-3 whitespace-nowrap">{r.arrivalTime ?? formatTime(session.startsAt, locale)}</td>
                     <td className="p-3 whitespace-nowrap">{r.departureTime ?? formatTime(session.endsAt, locale)}</td>
                     <td className="p-3">
@@ -194,7 +199,7 @@ export default async function AdminSessionPage({
                 ))}
                 {confirmed.some((r) => r.note) && (
                   <tr className="bg-border/20 text-xs text-muted">
-                    <td colSpan={sessionTables.length > 0 ? 8 : 7} className="p-3">
+                    <td colSpan={sessionTables.length > 0 ? 9 : 8} className="p-3">
                       <strong>{t.playerNote}:</strong>{" "}
                       {confirmed.filter((r) => r.note).map((r) => `${r.nickname}: „${r.note}“`).join(" · ")}
                     </td>
@@ -209,6 +214,13 @@ export default async function AdminSessionPage({
             {t.allEmails}<span className="select-all">{confirmed.map((r) => r.email).join(", ")}</span>
           </p>
         )}
+        {confirmed.length > 0 && (
+          <Card>
+            <h3 className="mb-1 font-semibold">🕒 {t.presenceTitle}</h3>
+            <p className="mb-3 text-sm text-muted">{t.presenceHint}</p>
+            <PresenceChart slots={presence} total={confirmed.length} allLabel={t.presenceAll} />
+          </Card>
+        )}
       </section>
 
       {waitlisted.length > 0 && (
@@ -220,7 +232,7 @@ export default async function AdminSessionPage({
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
                 <span>
                   <span className="mr-2 font-semibold text-muted">{i + 1}.</span>
-                  {r.firstName} {r.lastName} ({r.nickname}<Flags r={r} t={t} />) · {r.email}
+                  {r.firstName} {r.lastName} ({r.nickname}<Flags r={r} t={t} />) · {r.email}{r.phone && <> · {r.phone}</>}
                 </span>
                 <span className="flex gap-2">
                   <a href={editUrl(r.editToken)} className="self-center text-muted hover:underline" target="_blank" rel="noreferrer">{t.link}</a>

@@ -66,13 +66,14 @@ export async function adminLogin(page: Page, creds: { email: string; password: s
 export async function register(
   page: Page,
   sessionId: number,
-  data: { first?: string; last?: string; nick: string; email: string; arrival?: string; note?: string },
+  data: { first?: string; last?: string; nick: string; email: string; phone?: string; arrival?: string; note?: string },
 ) {
   await page.goto(`/termin/${sessionId}`);
   await page.fill("#firstName", data.first ?? "Test");
   await page.fill("#lastName", data.last ?? "Testovic");
   await page.fill("#nickname", data.nick);
   await page.fill("#email", data.email);
+  await page.fill("#phone", data.phone ?? "+420 777 123 456");
   if (data.arrival) await page.selectOption("#arrivalTime", data.arrival);
   if (data.note) await page.fill("#note", data.note);
   await page.click("main form button[type=submit]");

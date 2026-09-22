@@ -1,6 +1,6 @@
-# BotC Olomouc – registrace na herní večery
+# Blood on the Clocktower CZ – registrace na herní večery
 
-Registrační web pro **Blood on the Clocktower** v Olomouci. Bez uživatelských účtů:
+Registrační web pro **Blood on the Clocktower** herní večery v českých městech (aktuálně Olomouc a Praha). Bez uživatelských účtů:
 hráč vyplní formulář, na e-mail dostane potvrzení s tajným odkazem, přes který může
 registraci upravit nebo zrušit.
 
@@ -16,7 +16,7 @@ registraci upravit nebo zrušit.
 - Dvojjazyčné rozhraní **česky / English** včetně adminu (přepínač v hlavičce, volba se ukládá do cookie, e-maily chodí v jazyce hráče)
 
 - `/` – seznam nadcházejících termínů s počtem volných míst a náhradníků
-- `/termin/[id]` – detail termínu a registrační formulář (jméno, příjmení, přezdívka, e-mail, volitelný příchod/odchod, „můžu dělat vypravěče“, „jsem nováček“)
+- `/termin/[id]` – detail termínu a registrační formulář (jméno, příjmení, přezdívka, e-mail, telefon, volitelný příchod/odchod, „můžu dělat vypravěče“, „jsem nováček“); telefon vidí jen organizátoři
 - `/termin/[id]/kalendar.ics` – termín jako soubor do kalendáře; odkaz i na Google Kalendář je na stránce termínu a v e-mailech
 - `/kalendar.ics` – veřejný iCal feed všech termínů (odběr kalendáře)
 - `/archiv` – proběhlé večery s odehranými scripty a počtem hráčů
@@ -24,7 +24,7 @@ registraci upravit nebo zrušit.
 - `/admin` – správa termínů a přehled přihlášených (účty organizátorů s hashovanými hesly, role správce / organizátor)
 - `/admin/ucty` – účty a pozvánky (jen správce): pozvánka vygeneruje jednorázový odkaz, na kterém si nový organizátor založí účet
 - Hráči: poznámka pro organizátory, výběr příchodu/odchodu po 15 minutách v rámci termínu, zrušení s důvodem, stránka `/moje-hry` (odkaz na přehled registrací e-mailem), sdílení termínu, PWA
-- Organizátoři: vypravěč u termínu, opakující se termíny, rozdělení ke stolům (auto + ručně, e-mail hráčům), evidence odehraných her (archiv, statistiky), soukromý iCal `/admin/kalendar.ics?key=…`, ✉️ nové poslání odkazu hráči, ⚠️ u registrací bez potvrzení
+- Organizátoři: přehled „kolik lidí bude v kterou hodinu“ podle příchodů a odchodů, vypravěč u termínu, opakující se termíny, rozdělení ke stolům (auto + ručně, e-mail hráčům), evidence odehraných her (archiv, statistiky), soukromý iCal `/admin/kalendar.ics?key=…`, ✉️ nové poslání odkazu hráči, ⚠️ u registrací bez potvrzení
 - Automatika: Discord post „zbývá míst“ dva dny před hrou, upozornění organizátorům (e-mail + Discord) při pozdním odhlášení (<24 h), selhání e-mailu nebo cronu; limit registrací z jedné sítě (`REGISTRATION_RATE_LIMIT`, výchozí 10/h)
 - Termíny jsou rozdělené podle města (Olomouc / Praha): filtr na hlavní stránce i v archivu, kalendář iCal pro každé město zvlášť (`/kalendar.ics?city=praha`)
 - `/admin/statistiky` – obsazenost, docházka, pravidelní hráči
@@ -68,7 +68,7 @@ Admin: `/admin/login`. Při prvním spuštění (žádný účet) stránka nabí
 | --- | --- |
 | `DATABASE_URL` | Postgres connection string |
 | `RESEND_API_KEY` | API klíč Resend (prázdné = e-maily jen do logu) |
-| `EMAIL_FROM` | Odesílatel, např. `BotC Olomouc <registrace@tvojedomena.cz>` (doména musí být ověřená v Resend) |
+| `EMAIL_FROM` | Odesílatel, např. `Blood on the Clocktower CZ <registrace@tvojedomena.cz>` (doména musí být ověřená v Resend) |
 | `NEXT_PUBLIC_SITE_URL` | Veřejná URL webu pro odkazy v e-mailech, bez lomítka na konci |
 | `ADMIN_PASSWORD` | Bootstrap heslo, slouží jen k založení prvního účtu správce |
 | `NEXT_PUBLIC_SITE_NAME` | Název webu v hlavičce, e-mailech a kalendářích (výchozí „Blood on the Clocktower CZ“) |

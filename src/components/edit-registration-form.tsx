@@ -64,6 +64,9 @@ export function EditRegistrationForm({
         <Field label={t.email} name="email">
           <input id="email" value={r.email} disabled className={`${inputClass} opacity-60`} />
         </Field>
+        <Field label={t.phone} name="phone" errors={fe.phone} hint={t.phoneHint}>
+          <input id="phone" name="phone" type="tel" required defaultValue={r.phone ?? ""} className={inputClass} autoComplete="tel" placeholder="+420 777 123 456" />
+        </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t.arrival} name="arrivalTime" errors={fe.arrivalTime}>
             <TimeSelect
