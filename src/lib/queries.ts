@@ -34,6 +34,8 @@ const sessionColumns = {
   storyteller: sessions.storyteller,
   spotsPostedAt: sessions.spotsPostedAt,
   note: sessions.note,
+  arrivalMode: sessions.arrivalMode,
+  phoneRequired: sessions.phoneRequired,
   scripts: sessions.scripts,
   createdAt: sessions.createdAt,
   confirmedCount,

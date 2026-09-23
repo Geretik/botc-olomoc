@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { adminRoles, cities, gameWinners } from "@/db/schema";
+import { adminRoles, arrivalModes, cities, gameWinners, type ArrivalMode } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import { PASSWORD_MIN_LENGTH } from "./password";
 import { formatTime, TIME_RE } from "./time";
@@ -7,27 +7,35 @@ import { formatTime, TIME_RE } from "./time";
 /** Optional "+" followed by 9–15 digits (after removing spaces, dashes and parentheses). */
 export const PHONE_RE = /^\+?\d{9,15}$/;
 
-export function registrationSchema(t: Dict["errors"]) {
+/** Per-session switches that change what the registration form asks for. */
+export type RegistrationRules = { arrivalMode: ArrivalMode; phoneRequired: boolean };
+
+export function registrationSchema(t: Dict["errors"], rules: RegistrationRules) {
+  // missing in "late" mode (the form has no time selects), empty = session start/end
   const optionalTime = z
     .string()
-    .trim()
-    .transform((v) => (v === "" ? null : v))
+    .optional()
+    .transform((v) => (v?.trim() ? v.trim() : null))
     .pipe(z.string().regex(TIME_RE, t.timeFormat).nullable());
+
+  const phone = z
+    .string()
+    .optional()
+    .transform((v) => (v ?? "").trim())
+    .pipe(rules.phoneRequired ? z.string().min(1, t.fillPhone).max(30) : z.string().max(30))
+    // "+420 777 123 456" → "+420777123456"
+    .transform((v) => (v === "" ? null : v.replace(/[\s().-]/g, "")))
+    .pipe(z.string().regex(PHONE_RE, t.invalidPhone).nullable());
 
   return z.object({
     nickname: z.string().trim().min(1, t.fillNickname).max(100),
     email: z.string().trim().toLowerCase().email(t.invalidEmail).max(200),
     firstName: optionalText,
     lastName: optionalText,
-    phone: z
-      .string()
-      .trim()
-      .max(30)
-      // "+420 777 123 456" → "+420777123456"
-      .transform((v) => (v === "" ? null : v.replace(/[\s().-]/g, "")))
-      .pipe(z.string().regex(PHONE_RE, t.invalidPhone).nullable()),
-    arrivalTime: optionalTime,
-    departureTime: optionalTime,
+    phone,
+    arrivalTime: rules.arrivalMode === "times" ? optionalTime : z.string().optional().transform(() => null),
+    departureTime: rules.arrivalMode === "times" ? optionalTime : z.string().optional().transform(() => null),
+    arrivesLate: rules.arrivalMode === "late" ? checkbox : z.string().optional().transform(() => false),
     canStorytell: checkbox,
     isNewbie: checkbox,
     note: z
@@ -62,8 +70,8 @@ export function broadcastSchema(t: Dict["admin"]["errors"]) {
   });
 }
 
-export function registrationEditSchema(t: Dict["errors"]) {
-  return registrationSchema(t).omit({ email: true, website: true });
+export function registrationEditSchema(t: Dict["errors"], rules: RegistrationRules) {
+  return registrationSchema(t, rules).omit({ email: true, website: true });
 }
 
 export function sessionSchema(t: Dict["admin"]["errors"]) {
@@ -74,6 +82,8 @@ export function sessionSchema(t: Dict["admin"]["errors"]) {
     endsAt: z.string().min(1, t.fillEnd),
     place: z.string().trim().min(1, t.fillPlace).max(300),
     capacity: z.coerce.number().int().min(1, t.capacityMin).max(500),
+    arrivalMode: z.enum(arrivalModes).default("times"),
+    phoneRequired: checkbox,
     storyteller: z
       .string()
       .trim()

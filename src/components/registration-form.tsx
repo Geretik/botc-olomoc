@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { registerAction, type RegisterResult } from "@/app/actions/registration";
+import type { ArrivalMode } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import { TimeSelect } from "./time-select";
 import { Alert, Button, Checkbox, Field, inputClass } from "./ui";
@@ -11,6 +12,8 @@ export function RegistrationForm({
   defaultArrival,
   defaultDeparture,
   waitlist = false,
+  arrivalMode = "times",
+  phoneRequired = false,
   t,
 }: {
   sessionId: number;
@@ -18,6 +21,8 @@ export function RegistrationForm({
   defaultDeparture: string;
   /** true when the session is full and the player joins the waitlist */
   waitlist?: boolean;
+  arrivalMode?: ArrivalMode;
+  phoneRequired?: boolean;
   t: Dict["form"];
 }) {
   const [state, action, pending] = useActionState<RegisterResult, FormData>(
@@ -70,10 +75,11 @@ export function RegistrationForm({
           <input id="lastName" name="lastName" className={inputClass} autoComplete="family-name" />
         </Field>
       </div>
-      <Field label={`${t.phone} (${t.optional})`} name="phone" errors={fe.phone} hint={t.phoneHint}>
-        <input id="phone" name="phone" type="tel" className={inputClass} autoComplete="tel" placeholder="+420 777 123 456" />
+      <Field label={phoneRequired ? t.phone : `${t.phone} (${t.optional})`} name="phone" errors={fe.phone} hint={t.phoneHint}>
+        <input id="phone" name="phone" type="tel" required={phoneRequired} className={inputClass} autoComplete="tel" placeholder="+420 777 123 456" />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
+      {arrivalMode === "late" && <Checkbox name="arrivesLate" label={t.arrivesLate} hint={t.arrivesLateHint} />}
+      {arrivalMode === "times" && <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t.arrival} name="arrivalTime" errors={fe.arrivalTime} hint={t.arrivalHint}>
           <TimeSelect
             id="arrivalTime"
@@ -92,7 +98,7 @@ export function RegistrationForm({
             defaultLabel={t.departureDefault.replace("{t}", defaultDeparture)}
           />
         </Field>
-      </div>
+      </div>}
       <Checkbox name="canStorytell" label={t.canStorytell} hint={t.canStorytellHint} />
       <Checkbox name="isNewbie" label={t.isNewbie} hint={t.isNewbieHint} />
       <Field label={t.note} name="note" errors={fe.note} hint={t.noteHint}>
@@ -105,6 +111,7 @@ export function RegistrationForm({
       <Button type="submit" disabled={pending}>
         {pending ? t.submitting : waitlist ? t.submitWaitlist : t.submit}
       </Button>
+      <p className="text-xs text-muted">{t.privacyNote}</p>
     </form>
   );
 }

@@ -158,7 +158,7 @@ export default async function AdminSessionPage({
                   <th className="p-3">{t.email}</th>
                   <th className="p-3">{t.phone}</th>
                   <th className="p-3">{t.arrival}</th>
-                  <th className="p-3">{t.departure}</th>
+                  {session.arrivalMode === "times" && <th className="p-3">{t.departure}</th>}
                   <th className="p-3" title={t.attendance}>{t.attended}</th>
                   {sessionTables.length > 0 && <th className="p-3">{t.tableColumn}</th>}
                   <th className="p-3"></th>
@@ -171,8 +171,14 @@ export default async function AdminSessionPage({
                     <td className="p-3 whitespace-nowrap">{r.nickname}<Flags r={r} t={t} /></td>
                     <td className="p-3 whitespace-nowrap"><a href={`mailto:${r.email}`} className="hover:underline">{r.email}</a></td>
                     <td className="p-3 whitespace-nowrap">{r.phone ? <a href={`tel:${r.phone}`} className="hover:underline">{r.phone}</a> : <span className="text-muted">–</span>}</td>
-                    <td className="p-3 whitespace-nowrap">{r.arrivalTime ?? formatTime(session.startsAt, locale)}</td>
-                    <td className="p-3 whitespace-nowrap">{r.departureTime ?? formatTime(session.endsAt, locale)}</td>
+                    {session.arrivalMode === "late" ? (
+                      <td className="p-3 whitespace-nowrap">{r.arrivesLate ? <strong>{t.late}</strong> : <span className="text-muted">{t.fromStart}</span>}</td>
+                    ) : (
+                      <>
+                        <td className="p-3 whitespace-nowrap">{r.arrivalTime ?? formatTime(session.startsAt, locale)}</td>
+                        <td className="p-3 whitespace-nowrap">{r.departureTime ?? formatTime(session.endsAt, locale)}</td>
+                      </>
+                    )}
                     <td className="p-3">
                       <AttendanceToggle registrationId={r.id} attended={r.attended} labels={{ came: t.came, noShow: t.noShow }} />
                     </td>
@@ -215,7 +221,7 @@ export default async function AdminSessionPage({
             {t.allEmails}<span className="select-all">{confirmed.map((r) => r.email).join(", ")}</span>
           </p>
         )}
-        {confirmed.length > 0 && (
+        {confirmed.length > 0 && session.arrivalMode === "times" && (
           <Card>
             <h3 className="mb-1 font-semibold">🕒 {t.presenceTitle}</h3>
             <p className="mb-3 text-sm text-muted">{t.presenceHint}</p>

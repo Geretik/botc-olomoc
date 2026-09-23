@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { cities, type City, type Session } from "@/db/schema";
+import { arrivalModes, cities, type City, type Session } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import type { FormState } from "@/lib/validation";
 import { Alert, Button, Checkbox, Field, inputClass } from "../ui";
@@ -18,7 +18,7 @@ export function SessionForm({
 }: {
   action: (prev: FormState, fd: FormData) => Promise<FormState>;
   /** Prefilled values – the session being edited, or a template when duplicating */
-  session?: Pick<Session, "title" | "city" | "place" | "capacity" | "storyteller" | "note" | "scripts">;
+  session?: Pick<Session, "title" | "city" | "place" | "capacity" | "storyteller" | "note" | "scripts" | "arrivalMode" | "phoneRequired">;
   /** datetime-local strings in Prague time */
   defaults?: { startsAt: string; endsAt: string };
   mode?: "create" | "edit";
@@ -56,6 +56,14 @@ export function SessionForm({
       <Field label={t.capacity} name="capacity" errors={fe.capacity} hint={mode === "edit" ? t.capacityHint : undefined}>
         <input id="capacity" name="capacity" type="number" min={1} max={500} required defaultValue={session?.capacity ?? 15} className={inputClass} />
       </Field>
+      <Field label={t.arrivalMode} name="arrivalMode" errors={fe.arrivalMode} hint={t.arrivalModeHint}>
+        <select id="arrivalMode" name="arrivalMode" defaultValue={session?.arrivalMode ?? "times"} className={inputClass}>
+          {arrivalModes.map((m) => (
+            <option key={m} value={m}>{m === "times" ? t.arrivalModeTimes : t.arrivalModeLate}</option>
+          ))}
+        </select>
+      </Field>
+      <Checkbox name="phoneRequired" label={t.phoneRequired} hint={t.phoneRequiredHint} defaultChecked={session?.phoneRequired ?? false} />
       <Field label={t.storyteller} name="storyteller" errors={fe.storyteller} hint={t.storytellerHint}>
         <input id="storyteller" name="storyteller" maxLength={200} defaultValue={session?.storyteller ?? ""} className={inputClass} placeholder="🎩 Honza" />
       </Field>

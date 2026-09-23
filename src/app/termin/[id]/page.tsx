@@ -142,6 +142,8 @@ export default async function SessionPage({
               defaultArrival={formatTime(session.startsAt, locale)}
               defaultDeparture={formatTime(session.endsAt, locale)}
               waitlist={full}
+              arrivalMode={session.arrivalMode}
+              phoneRequired={session.phoneRequired}
               t={t.form}
             />
           </>

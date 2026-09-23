@@ -5,7 +5,7 @@ import {
   cancelRegistrationAction,
   updateRegistrationAction,
 } from "@/app/actions/registration";
-import type { Registration } from "@/db/schema";
+import type { ArrivalMode, Registration } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import type { FormState } from "@/lib/validation";
 import { TimeSelect } from "./time-select";
@@ -15,11 +15,15 @@ export function EditRegistrationForm({
   registration: r,
   defaultArrival,
   defaultDeparture,
+  arrivalMode = "times",
+  phoneRequired = false,
   t,
 }: {
   registration: Registration;
   defaultArrival: string;
   defaultDeparture: string;
+  arrivalMode?: ArrivalMode;
+  phoneRequired?: boolean;
   t: Dict["form"];
 }) {
   const [state, action, pending] = useActionState<FormState, FormData>(
@@ -64,10 +68,11 @@ export function EditRegistrationForm({
             <input id="lastName" name="lastName" defaultValue={r.lastName ?? ""} className={inputClass} />
           </Field>
         </div>
-        <Field label={`${t.phone} (${t.optional})`} name="phone" errors={fe.phone} hint={t.phoneHint}>
-          <input id="phone" name="phone" type="tel" defaultValue={r.phone ?? ""} className={inputClass} autoComplete="tel" placeholder="+420 777 123 456" />
+        <Field label={phoneRequired ? t.phone : `${t.phone} (${t.optional})`} name="phone" errors={fe.phone} hint={t.phoneHint}>
+          <input id="phone" name="phone" type="tel" required={phoneRequired} defaultValue={r.phone ?? ""} className={inputClass} autoComplete="tel" placeholder="+420 777 123 456" />
         </Field>
-        <div className="grid gap-4 sm:grid-cols-2">
+        {arrivalMode === "late" && <Checkbox name="arrivesLate" label={t.arrivesLate} hint={t.arrivesLateHint} defaultChecked={r.arrivesLate} />}
+        {arrivalMode === "times" && <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t.arrival} name="arrivalTime" errors={fe.arrivalTime}>
             <TimeSelect
               id="arrivalTime"
@@ -88,7 +93,7 @@ export function EditRegistrationForm({
               defaultLabel={t.departureDefault.replace("{t}", defaultDeparture)}
             />
           </Field>
-        </div>
+        </div>}
         <Checkbox name="canStorytell" label={t.canStorytell} hint={t.canStorytellHint} defaultChecked={r.canStorytell} />
         <Checkbox name="isNewbie" label={t.isNewbie} hint={t.isNewbieHint} defaultChecked={r.isNewbie} />
         <Field label={t.note} name="note" errors={fe.note} hint={t.noteHint}>

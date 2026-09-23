@@ -564,3 +564,39 @@ test("phone is optional but validated, normalised and shown only to organisers; 
   await page.goto(`/admin/termin/${other}`);
   await expect(page.locator("main table")).toContainText("Bez");
 });
+
+test("session settings: 'arrive later' checkbox instead of times, required phone, privacy note", async ({ page }) => {
+  const id = await createSession({ capacity: 5, arrivalMode: "late", phoneRequired: true });
+  await page.goto(`/termin/${id}`);
+  await expect(page.locator("#arrivalTime")).toHaveCount(0);
+  await expect(page.locator("#arrivesLate")).toBeVisible();
+  await expect(page.locator("main")).toContainText("pouze kvůli pořádání tohoto konkrétního hraní");
+
+  // phone is required for this session: the browser insists, and so does the server
+  await expect(page.locator("#phone")).toHaveAttribute("required", "");
+  await page.fill("#nickname", "Pozdní");
+  await page.fill("#email", "pozdni@example.com");
+  await page.locator("#phone").evaluate((el) => el.removeAttribute("required"));
+  await page.click("main form button[type=submit]");
+  await expect(page.locator("main")).toContainText("Vyplň telefon");
+  expect(await sql("select id from registrations where email='pozdni@example.com'")).toHaveLength(0);
+
+  // the form is reset after a failed submit, so fill everything again
+  await page.fill("#nickname", "Pozdní");
+  await page.fill("#email", "pozdni@example.com");
+  await page.fill("#phone", "777 000 111");
+  await page.check("#arrivesLate");
+  await page.click("main form button[type=submit]");
+  await expect(page.getByTestId("register-result")).toBeVisible({ timeout: 15000 });
+  const [r] = await sql<{ arrives_late: boolean; arrival_time: string | null; phone: string }>(
+    "select arrives_late, arrival_time, phone from registrations where email='pozdni@example.com'",
+  );
+  expect(r).toEqual({ arrives_late: true, arrival_time: null, phone: "777000111" });
+
+  await adminLogin(page);
+  await page.goto(`/admin/termin/${id}`);
+  await expect(page.locator("#arrivalMode")).toHaveValue("late");
+  await expect(page.locator("#phoneRequired")).toBeChecked();
+  await expect(page.locator("main table")).toContainText("později");
+  await expect(page.getByTestId("presence")).toHaveCount(0);
+});

@@ -83,7 +83,9 @@ export async function registerAction(
   formData: FormData,
 ): Promise<RegisterResult> {
   const { locale, t } = await getDict();
-  const parsed = registrationSchema(t.errors).safeParse(
+  const s = await db.query.sessions.findFirst({ where: eq(sessions.id, sessionId) });
+  if (!s) return { error: t.errors.notFound };
+  const parsed = registrationSchema(t.errors, s).safeParse(
     Object.fromEntries(formData.entries()),
   );
   if (!parsed.success) {
@@ -95,8 +97,7 @@ export async function registerAction(
     return { ok: true, outcome: "created" };
   }
   {
-    const s = await db.query.sessions.findFirst({ where: eq(sessions.id, sessionId) });
-    const timeErrors = s && timeRangeErrors(data, s, t.errors);
+    const timeErrors = timeRangeErrors(data, s, t.errors);
     if (timeErrors) return { error: t.errors.checkForm, fieldErrors: timeErrors };
   }
   const ipHash = await clientIpHash();
@@ -158,6 +159,7 @@ export async function registerAction(
         phone: data.phone,
         arrivalTime: data.arrivalTime,
         departureTime: data.departureTime,
+        arrivesLate: data.arrivesLate,
         note: data.note ?? null,
         ipHash,
         canStorytell: data.canStorytell,
@@ -246,14 +248,15 @@ export async function updateRegistrationAction(
   formData: FormData,
 ): Promise<FormState> {
   const { t } = await getDict();
-  const parsed = registrationEditSchema(t.errors).safeParse(
+  const current = await getRegistrationByToken(token);
+  if (!current) return { error: t.errors.regNotFound };
+  const parsed = registrationEditSchema(t.errors, current.session).safeParse(
     Object.fromEntries(formData.entries()),
   );
   if (!parsed.success) {
     return { error: t.errors.checkForm, fieldErrors: fieldErrorsOf(parsed.error) };
   }
-  const current = await getRegistrationByToken(token);
-  const timeErrors = current && timeRangeErrors(parsed.data, current.session, t.errors);
+  const timeErrors = timeRangeErrors(parsed.data, current.session, t.errors);
   if (timeErrors) return { error: t.errors.checkForm, fieldErrors: timeErrors };
   // Editing never sends e-mail.
   const [updated] = await db

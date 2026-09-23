@@ -13,6 +13,10 @@ import { relations, sql } from "drizzle-orm";
 export const cities = ["olomouc", "praha"] as const;
 export type City = (typeof cities)[number];
 
+/** How players state when they come: exact arrival/departure times, or just an "I'll be late" tick. */
+export const arrivalModes = ["times", "late"] as const;
+export type ArrivalMode = (typeof arrivalModes)[number];
+
 export const sessions = pgTable("sessions", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
@@ -27,6 +31,10 @@ export const sessions = pgTable("sessions", {
   /** Set once the "N spots left" Discord post two days before the game went out */
   spotsPostedAt: timestamp("spots_posted_at", { withTimezone: true }),
   note: text("note"),
+  /** "times" = players pick arrival/departure times; "late" = a single "I'll come later" checkbox (small groups) */
+  arrivalMode: text("arrival_mode", { enum: arrivalModes }).notNull().default("times"),
+  /** Whether the registration form insists on a phone number */
+  phoneRequired: boolean("phone_required").notNull().default(false),
   /** Links to scripts played that evening (botcscripts.com, script tool, PDF on a drive, …) */
   scripts: jsonb("scripts").$type<ScriptLink[]>().notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -70,6 +78,8 @@ export const registrations = pgTable(
     arrivalTime: text("arrival_time"),
     /** "HH:MM" in Europe/Prague, null = same as session end */
     departureTime: text("departure_time"),
+    /** Sessions with arrivalMode "late": the player ticked "I'll come later" */
+    arrivesLate: boolean("arrives_late").notNull().default(false),
     status: text("status", { enum: ["confirmed", "waitlisted", "cancelled"] })
       .notNull()
       .default("confirmed"),

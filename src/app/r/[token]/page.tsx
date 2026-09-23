@@ -65,6 +65,8 @@ export default async function EditRegistrationPage({
             registration={reg}
             defaultArrival={formatTime(s.startsAt, locale)}
             defaultDeparture={formatTime(s.endsAt, locale)}
+            arrivalMode={s.arrivalMode}
+            phoneRequired={s.phoneRequired}
             t={t.form}
             />
           </>

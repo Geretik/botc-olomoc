@@ -37,15 +37,33 @@ export async function createAdminUser(
 }
 
 export async function createSession(
-  overrides: Partial<{ title: string; capacity: number; daysAhead: number; city: "olomouc" | "praha" }> = {},
+  overrides: Partial<{
+    title: string;
+    capacity: number;
+    daysAhead: number;
+    city: "olomouc" | "praha";
+    arrivalMode: "times" | "late";
+    phoneRequired: boolean;
+  }> = {},
 ) {
   const daysAhead = overrides.daysAhead ?? 7;
   const start = new Date(Date.now() + daysAhead * 864e5);
   start.setUTCHours(17, 0, 0, 0);
   const end = new Date(start.getTime() + 4 * 36e5);
   const rows = await sql<{ id: number }>(
-    "insert into sessions (title, city, starts_at, ends_at, place, capacity, note, scripts) values ($1,$2,$3,$4,$5,$6,$7,$8) returning id",
-    [overrides.title ?? "Herní večer", overrides.city ?? "olomouc", start.toISOString(), end.toISOString(), "Klubovna", overrides.capacity ?? 2, null, JSON.stringify([])],
+    "insert into sessions (title, city, starts_at, ends_at, place, capacity, note, scripts, arrival_mode, phone_required) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning id",
+    [
+      overrides.title ?? "Herní večer",
+      overrides.city ?? "olomouc",
+      start.toISOString(),
+      end.toISOString(),
+      "Klubovna",
+      overrides.capacity ?? 2,
+      null,
+      JSON.stringify([]),
+      overrides.arrivalMode ?? "times",
+      overrides.phoneRequired ?? false,
+    ],
   );
   return rows[0].id;
 }
