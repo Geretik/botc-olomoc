@@ -12,7 +12,7 @@ export default async function AboutPage() {
   const { locale, t } = await getDict();
   return (
     <article className="max-w-2xl">
-      <h1 className="text-3xl font-bold tracking-tight">{t.about.title}</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t.about.title}</h1>
       <p className="mt-2 text-muted">{t.about.subtitle}</p>
 
       <div className="mt-8">

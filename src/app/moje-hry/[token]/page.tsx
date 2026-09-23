@@ -18,7 +18,7 @@ export default async function MyGamesPage({ params }: { params: Promise<{ token:
   if (!email) {
     return (
       <div className="mx-auto flex max-w-md flex-col gap-4">
-        <h1 className="text-3xl font-bold tracking-tight">{m.title}</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{m.title}</h1>
         <Alert kind="error">{m.linkInvalid}</Alert>
         <Link href="/moje-hry" className="text-sm underline">{m.submit}</Link>
       </div>
@@ -34,7 +34,7 @@ export default async function MyGamesPage({ params }: { params: Promise<{ token:
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{m.title}</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{m.title}</h1>
         <p className="mt-1 text-sm text-muted">{email}</p>
       </div>
       <section className="flex flex-col gap-3">

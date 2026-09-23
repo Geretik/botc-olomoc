@@ -42,25 +42,28 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang={locale} className={`${geistSans.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <header className="border-b border-border">
-          <div className="mx-auto max-w-3xl px-4 py-4 flex items-center justify-between gap-4">
-            <Link href="/" className="font-semibold tracking-tight text-lg">
+          <div className="mx-auto max-w-3xl px-4 py-3 sm:py-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+            <Link href="/" className="mr-auto font-semibold tracking-tight text-lg leading-tight">
               🕰️ {t.meta.title}
             </Link>
-            <nav className="flex items-center gap-4 text-sm">
-              <Link href="/" className="hover:underline">{t.nav.sessions}</Link>
-              <Link href="/o-hre" className="hover:underline">{t.nav.about}</Link>
-              <Link href="/archiv" className="hover:underline">{t.nav.archive}</Link>
-              <LanguageSwitch locale={locale} t={t} />
+            <LanguageSwitch locale={locale} t={t} className="order-2 sm:order-3" />
+            <nav
+              className="order-3 sm:order-2 -mx-2 flex basis-full sm:basis-auto sm:mx-0 items-center gap-1 sm:gap-4 overflow-x-auto whitespace-nowrap text-sm"
+            >
+              <Link href="/" className="rounded-md px-2 py-1.5 hover:underline">{t.nav.sessions}</Link>
+              <Link href="/o-hre" className="rounded-md px-2 py-1.5 hover:underline">{t.nav.about}</Link>
+              <Link href="/archiv" className="rounded-md px-2 py-1.5 hover:underline">{t.nav.archive}</Link>
+              <Link href="/moje-hry" className="rounded-md px-2 py-1.5 hover:underline sm:hidden">{t.nav.myGames}</Link>
             </nav>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-3xl px-4 py-8 flex-1">
+        <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:py-8 flex-1">
           {children}
         </main>
         <footer className="border-t border-border">
-          <div className="mx-auto max-w-3xl px-4 py-4 text-sm text-muted flex justify-between">
+          <div className="mx-auto max-w-3xl px-4 py-4 text-sm text-muted flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <span>{t.nav.footer}</span>
-            <span className="flex gap-4">
+            <span className="flex flex-wrap gap-x-4 gap-y-1">
               <Link href="/moje-hry" className="hover:underline">{t.nav.myGames}</Link>
               <a href="/kalendar.ics" className="hover:underline">{t.nav.calendarFeed}</a>
               <Link href="/admin" className="hover:underline">

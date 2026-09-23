@@ -34,7 +34,7 @@ export default async function EditRegistrationPage({
     <div className="flex flex-col gap-6">
       <Link href="/" className="text-sm text-muted hover:underline">{t.session.back}</Link>
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{t.edit.title}</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t.edit.title}</h1>
         <p className="mt-2 font-medium">{s.title}</p>
         <p>
           <span aria-hidden className="mr-1.5">📅</span>

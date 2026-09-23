@@ -71,7 +71,7 @@ export default async function SessionPage({
         {t.session.back}
       </Link>
       <div>
-        <h1 className="flex flex-wrap items-center gap-3 text-3xl font-bold tracking-tight">
+        <h1 className="flex flex-wrap items-center gap-3 text-2xl sm:text-3xl font-bold tracking-tight">
           {session.title}
           <CityBadge city={session.city} t={t} />
           {admin && <EditPencil sessionId={session.id} title={t.session.editPencil} />}

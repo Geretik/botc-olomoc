@@ -22,7 +22,7 @@ export default async function ArchivePage({ searchParams }: { searchParams: Prom
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{t.archive.title}</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t.archive.title}</h1>
         <p className="mt-2 text-muted">{t.archive.subtitle}</p>
       </div>
       <CityTabs current={city} t={t} basePath="/archiv" />
