@@ -22,10 +22,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <Link href="/admin/novy" className="hover:underline">{t.admin.nav.newSession}</Link>
         <Link href="/admin/statistiky" className="hover:underline">{t.admin.nav.stats}</Link>
         {hasRole(me, "admin") && <Link href="/admin/ucty" className="hover:underline">{t.admin.nav.accounts}</Link>}
-        <span className="ml-auto text-muted" title={me.email}>{me.nickname}</span>
-        <form action={logoutAction}>
-          <Button type="submit" variant="secondary">{t.admin.nav.logout}</Button>
-        </form>
+        <span className="ml-auto flex items-center gap-3">
+          <span className="truncate text-muted" title={me.email}>{me.nickname}</span>
+          <form action={logoutAction}>
+            <Button type="submit" variant="secondary">{t.admin.nav.logout}</Button>
+          </form>
+        </span>
       </nav>
       {children}
     </div>
