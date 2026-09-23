@@ -69,6 +69,7 @@ Admin: `/admin/login`. Při prvním spuštění (žádný účet) stránka nabí
 | `DATABASE_URL` | Postgres connection string |
 | `RESEND_API_KEY` | API klíč Resend (prázdné = e-maily jen do logu) |
 | `EMAIL_FROM` | Odesílatel, např. `Blood on the Clocktower CZ <registrace@tvojedomena.cz>` (doména musí být ověřená v Resend) |
+| `EMAIL_REDIRECT_TO` | Volitelné. Ve vývoji bez ověřené domény: všechny e-maily se doručí na tuto adresu (Resend v testovacím režimu posílá jen na e-mail vlastníka účtu), původní příjemce je uveden v předmětu a těle. V produkci nenastavovat. |
 | `NEXT_PUBLIC_SITE_URL` | Veřejná URL webu pro odkazy v e-mailech, bez lomítka na konci |
 | `ADMIN_PASSWORD` | Bootstrap heslo, slouží jen k založení prvního účtu správce |
 | `NEXT_PUBLIC_SITE_NAME` | Název webu v hlavičce, e-mailech a kalendářích (výchozí „Blood on the Clocktower CZ“) |

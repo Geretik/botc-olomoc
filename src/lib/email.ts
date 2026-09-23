@@ -26,6 +26,15 @@ async function send(to: string, subject: string, html: string, text: string) {
     console.log(`[email → ${to}] ${subject}\n${text}`);
     return;
   }
+  // Development without a verified Resend domain: deliver everything to one inbox,
+  // keeping the original recipient visible in the subject and body.
+  const redirect = (process.env.EMAIL_REDIRECT_TO ?? "").trim();
+  if (redirect && redirect.toLowerCase() !== to.toLowerCase()) {
+    subject = `[→ ${to}] ${subject}`;
+    text = `Původní příjemce / original recipient: ${to}\n\n${text}`;
+    html = `<p style="color:#666;font-size:90%">Původní příjemce / original recipient: ${escapeHtml(to)}</p>${html}`;
+    to = redirect;
+  }
   const resend = new Resend(apiKey);
   const { error } = await resend.emails.send({ from, to, subject, html, text });
   if (error) {
