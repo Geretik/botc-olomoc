@@ -3,6 +3,7 @@ import type { Registration, Session } from "@/db/schema";
 import { dictionaries, type Locale } from "@/i18n/dictionaries";
 import { googleCalendarUrl, sessionIcsUrl } from "./ics";
 import { formatRange, formatTime } from "./time";
+import { greetingName } from "./names";
 import { editUrl } from "./site";
 
 function escapeHtml(s: string) {
@@ -49,7 +50,7 @@ export async function sendTableEmail(reg: Registration, session: Session, table:
   const t = dictionaries[locale].email;
   const edit = editBlock(t, reg);
   const st = table.storyteller ?? session.storyteller;
-  const text = `${t.hi(reg.firstName)}
+  const text = `${t.hi(greetingName(reg))}
 
 ${t.tableBody(table.number)}${st ? ` ${t.tableStoryteller(st)}` : ""}
 ${mates.length ? `\n${t.tableMates} ${mates.join(", ")}\n` : ""}
@@ -60,7 +61,7 @@ ${t.where}: ${session.place}
 ${edit.text}
 
 ${t.seeYou}`;
-  const html = `<p>${escapeHtml(t.hi(reg.firstName))}</p>
+  const html = `<p>${escapeHtml(t.hi(greetingName(reg)))}</p>
 <p>${escapeHtml(t.tableBody(table.number))}${st ? ` ${escapeHtml(t.tableStoryteller(st))}` : ""}</p>
 ${mates.length ? `<p>${escapeHtml(t.tableMates)} ${escapeHtml(mates.join(", "))}</p>` : ""}
 <p>${escapeHtml(session.title)} · ${escapeHtml(formatRange(session.startsAt, session.endsAt, locale))} · ${escapeHtml(session.place)}</p>
@@ -130,7 +131,7 @@ export async function sendConfirmationEmail(reg: Registration, session: Session)
   const cal = calendarBlock(t, session);
   const edit = editBlock(t, reg);
 
-  const text = `${t.hi(reg.firstName)}
+  const text = `${t.hi(greetingName(reg))}
 
 ${t.confirmed}
 
@@ -142,7 +143,7 @@ ${edit.text}
 
 ${t.seeYou}`;
 
-  const html = `<p>${escapeHtml(t.hi(reg.firstName))}</p>
+  const html = `<p>${escapeHtml(t.hi(greetingName(reg)))}</p>
 <p>${escapeHtml(t.confirmed)}</p>
 ${d.html}
 ${cal.html}
@@ -158,7 +159,7 @@ export async function sendWaitlistEmail(reg: Registration, session: Session, pos
   const d = detailsTable(t, reg, session, locale);
   const edit = editBlock(t, reg);
 
-  const text = `${t.hi(reg.firstName)}
+  const text = `${t.hi(greetingName(reg))}
 
 ${t.waitlisted(position)}
 
@@ -166,7 +167,7 @@ ${d.text}
 
 ${edit.text}`;
 
-  const html = `<p>${escapeHtml(t.hi(reg.firstName))}</p>
+  const html = `<p>${escapeHtml(t.hi(greetingName(reg)))}</p>
 <p>${escapeHtml(t.waitlisted(position))}</p>
 ${d.html}
 ${edit.html}`;
@@ -181,7 +182,7 @@ export async function sendPromotedEmail(reg: Registration, session: Session) {
   const cal = calendarBlock(t, session);
   const edit = editBlock(t, reg);
 
-  const text = `${t.hi(reg.firstName)}
+  const text = `${t.hi(greetingName(reg))}
 
 ${t.promoted}
 
@@ -194,7 +195,7 @@ ${edit.text}
 
 ${t.seeYou}`;
 
-  const html = `<p>${escapeHtml(t.hi(reg.firstName))}</p>
+  const html = `<p>${escapeHtml(t.hi(greetingName(reg)))}</p>
 <p>${escapeHtml(t.promoted)}</p>
 ${d.html}
 ${cal.html}
@@ -220,7 +221,7 @@ export async function sendReminderEmail(reg: Registration, session: Session) {
       }
     : { text: "", html: "" };
 
-  const text = `${t.hi(reg.firstName)}
+  const text = `${t.hi(greetingName(reg))}
 
 ${t.reminder}
 
@@ -233,7 +234,7 @@ ${cal.text}
 
 ${t.seeYou}`;
 
-  const html = `<p>${escapeHtml(t.hi(reg.firstName))}</p>
+  const html = `<p>${escapeHtml(t.hi(greetingName(reg)))}</p>
 <p>${escapeHtml(t.reminder)}</p>
 ${d.html}
 ${scripts.html}
@@ -257,7 +258,7 @@ export async function sendBroadcastEmail(
   const link = editUrl(reg.editToken);
   const when = formatRange(session.startsAt, session.endsAt, locale);
 
-  const text = `${t.hi(reg.firstName)}
+  const text = `${t.hi(greetingName(reg))}
 
 ${message}
 
@@ -265,7 +266,7 @@ ${message}
 ${t.broadcastFooter(session.title, when)}
 ${link}`;
 
-  const html = `<p>${escapeHtml(t.hi(reg.firstName))}</p>
+  const html = `<p>${escapeHtml(t.hi(greetingName(reg)))}</p>
 <p style="white-space:pre-line">${escapeHtml(message)}</p>
 <hr>
 <p style="color:#666;font-size:90%">${escapeHtml(t.broadcastFooter(session.title, when))} <a href="${link}">${t.editHtmlLink}</a>.</p>`;
@@ -282,14 +283,14 @@ export async function sendExistingRegistrationEmail(reg: Registration, session: 
     reg.status === "waitlisted"
       ? t.alreadyWaitlistedText(session.title, when)
       : t.alreadyText(session.title, when);
-  const text = `${t.hi(reg.firstName)}
+  const text = `${t.hi(greetingName(reg))}
 
 ${body}
 
 ${t.alreadyEdit}
 ${link}`;
 
-  const html = `<p>${escapeHtml(t.hi(reg.firstName))}</p>
+  const html = `<p>${escapeHtml(t.hi(greetingName(reg)))}</p>
 <p>${escapeHtml(body)}</p>
 <p>${t.editHtmlBefore}<a href="${link}">${t.editHtmlLink}</a>.</p>`;
 

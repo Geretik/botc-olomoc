@@ -56,22 +56,22 @@ export function RegistrationForm({
   return (
     <form action={action} className="flex flex-col gap-4">
       {state.error && <Alert kind="error">{state.error}</Alert>}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={t.firstName} name="firstName" errors={fe.firstName}>
-          <input id="firstName" name="firstName" required className={inputClass} autoComplete="given-name" />
-        </Field>
-        <Field label={t.lastName} name="lastName" errors={fe.lastName}>
-          <input id="lastName" name="lastName" required className={inputClass} autoComplete="family-name" />
-        </Field>
-      </div>
       <Field label={t.nickname} name="nickname" errors={fe.nickname} hint={t.nicknameHint}>
         <input id="nickname" name="nickname" required className={inputClass} autoComplete="nickname" />
       </Field>
       <Field label={t.email} name="email" errors={fe.email} hint={t.emailHint}>
         <input id="email" name="email" type="email" required className={inputClass} autoComplete="email" />
       </Field>
-      <Field label={t.phone} name="phone" errors={fe.phone} hint={t.phoneHint}>
-        <input id="phone" name="phone" type="tel" required className={inputClass} autoComplete="tel" placeholder="+420 777 123 456" />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label={`${t.firstName} (${t.optional})`} name="firstName" errors={fe.firstName}>
+          <input id="firstName" name="firstName" className={inputClass} autoComplete="given-name" />
+        </Field>
+        <Field label={`${t.lastName} (${t.optional})`} name="lastName" errors={fe.lastName}>
+          <input id="lastName" name="lastName" className={inputClass} autoComplete="family-name" />
+        </Field>
+      </div>
+      <Field label={`${t.phone} (${t.optional})`} name="phone" errors={fe.phone} hint={t.phoneHint}>
+        <input id="phone" name="phone" type="tel" className={inputClass} autoComplete="tel" placeholder="+420 777 123 456" />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t.arrival} name="arrivalTime" errors={fe.arrivalTime} hint={t.arrivalHint}>

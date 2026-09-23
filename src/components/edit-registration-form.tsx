@@ -50,22 +50,22 @@ export function EditRegistrationForm({
         {state.error && <Alert kind="error">{state.error}</Alert>}
         {state.ok && <Alert kind="success">{t.saved}</Alert>}
         {cancelState?.error && <Alert kind="error">{cancelState.error}</Alert>}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t.firstName} name="firstName" errors={fe.firstName}>
-            <input id="firstName" name="firstName" required defaultValue={r.firstName} className={inputClass} />
-          </Field>
-          <Field label={t.lastName} name="lastName" errors={fe.lastName}>
-            <input id="lastName" name="lastName" required defaultValue={r.lastName} className={inputClass} />
-          </Field>
-        </div>
         <Field label={t.nickname} name="nickname" errors={fe.nickname} hint={t.nicknameHintEdit}>
           <input id="nickname" name="nickname" required defaultValue={r.nickname} className={inputClass} />
         </Field>
         <Field label={t.email} name="email">
           <input id="email" value={r.email} disabled className={`${inputClass} opacity-60`} />
         </Field>
-        <Field label={t.phone} name="phone" errors={fe.phone} hint={t.phoneHint}>
-          <input id="phone" name="phone" type="tel" required defaultValue={r.phone ?? ""} className={inputClass} autoComplete="tel" placeholder="+420 777 123 456" />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={`${t.firstName} (${t.optional})`} name="firstName" errors={fe.firstName}>
+            <input id="firstName" name="firstName" defaultValue={r.firstName ?? ""} className={inputClass} />
+          </Field>
+          <Field label={`${t.lastName} (${t.optional})`} name="lastName" errors={fe.lastName}>
+            <input id="lastName" name="lastName" defaultValue={r.lastName ?? ""} className={inputClass} />
+          </Field>
+        </div>
+        <Field label={`${t.phone} (${t.optional})`} name="phone" errors={fe.phone} hint={t.phoneHint}>
+          <input id="phone" name="phone" type="tel" defaultValue={r.phone ?? ""} className={inputClass} autoComplete="tel" placeholder="+420 777 123 456" />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t.arrival} name="arrivalTime" errors={fe.arrivalTime}>

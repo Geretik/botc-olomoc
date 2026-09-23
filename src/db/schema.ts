@@ -59,11 +59,12 @@ export const registrations = pgTable(
     sessionId: integer("session_id")
       .notNull()
       .references(() => sessions.id, { onDelete: "cascade" }),
-    firstName: text("first_name").notNull(),
-    lastName: text("last_name").notNull(),
+    /** Optional since Sept 2026; older rows always have both */
+    firstName: text("first_name"),
+    lastName: text("last_name"),
     nickname: text("nickname").notNull(),
     email: text("email").notNull(),
-    /** Contact phone for the organisers (required in the form; null only for registrations older than the field) */
+    /** Optional contact phone for the organisers */
     phone: text("phone"),
     /** "HH:MM" in Europe/Prague, null = same as session start */
     arrivalTime: text("arrival_time"),

@@ -15,18 +15,17 @@ export function registrationSchema(t: Dict["errors"]) {
     .pipe(z.string().regex(TIME_RE, t.timeFormat).nullable());
 
   return z.object({
-    firstName: z.string().trim().min(1, t.fillFirstName).max(100),
-    lastName: z.string().trim().min(1, t.fillLastName).max(100),
     nickname: z.string().trim().min(1, t.fillNickname).max(100),
     email: z.string().trim().toLowerCase().email(t.invalidEmail).max(200),
+    firstName: optionalText,
+    lastName: optionalText,
     phone: z
       .string()
       .trim()
-      .min(1, t.fillPhone)
       .max(30)
       // "+420 777 123 456" → "+420777123456"
-      .transform((v) => v.replace(/[\s().-]/g, ""))
-      .pipe(z.string().regex(PHONE_RE, t.invalidPhone)),
+      .transform((v) => (v === "" ? null : v.replace(/[\s().-]/g, "")))
+      .pipe(z.string().regex(PHONE_RE, t.invalidPhone).nullable()),
     arrivalTime: optionalTime,
     departureTime: optionalTime,
     canStorytell: checkbox,
@@ -40,6 +39,14 @@ export function registrationSchema(t: Dict["errors"]) {
     website: z.string().max(0).optional(), // honeypot
   });
 }
+
+/** Optional free-text field: empty string becomes null. */
+const optionalText = z
+  .string()
+  .trim()
+  .max(100)
+  .transform((v) => (v === "" ? null : v))
+  .optional();
 
 /** <input type="checkbox"> sends "on" when checked and nothing at all otherwise. */
 const checkbox = z

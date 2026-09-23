@@ -517,18 +517,28 @@ test("tables: create, auto-assign with a storyteller per table, manual move, e-m
   await expect(page.locator("main")).toContainText("e-maily odeslány");
 });
 
-test("phone is required, normalised and shown only to organisers; hourly presence overview", async ({ page }) => {
+test("phone is optional but validated, normalised and shown only to organisers; hourly presence overview", async ({ page }) => {
   const id = await createSession({ capacity: 5 });
-  // missing phone → validation error, nothing saved
+  // invalid phone → validation error, nothing saved
   await page.goto(`/termin/${id}`);
-  await page.fill("#firstName", "Bez");
-  await page.fill("#lastName", "Telefonu");
   await page.fill("#nickname", "Bez");
   await page.fill("#email", "bez@example.com");
   await page.fill("#phone", "abc");
   await page.click("main form button[type=submit]");
   await expect(page.locator("main")).toContainText("Zadej platné telefonní číslo");
   expect(await sql("select id from registrations where email='bez@example.com'")).toHaveLength(0);
+
+  // only nickname and e-mail are required: name and phone may stay empty
+  const other = await createSession({ capacity: 5 });
+  await page.goto(`/termin/${other}`);
+  await page.fill("#nickname", "Bez");
+  await page.fill("#email", "bez@example.com");
+  await page.click("main form button[type=submit]");
+  await expect(page.getByTestId("register-result")).toBeVisible({ timeout: 15000 });
+  const [bez] = await sql<{ first_name: string | null; last_name: string | null; phone: string | null }>(
+    "select first_name, last_name, phone from registrations where email='bez@example.com'",
+  );
+  expect(bez).toEqual({ first_name: null, last_name: null, phone: null });
 
   // session is 19:00–23:00 Prague (17:00 UTC + 4 h)
   await register(page, id, { nick: "Celý", email: "cely@example.com", phone: "+420 777 123 456" });
@@ -549,4 +559,8 @@ test("phone is required, normalised and shown only to organisers; hourly presenc
   expect(await rows.locator("strong").allTextContents()).toEqual(["1", "2", "2", "2"]);
   await expect(rows.nth(0)).not.toContainText("všichni");
   await expect(rows.nth(1)).toContainText("všichni");
+
+  // a player without name or phone still shows up in the admin table
+  await page.goto(`/admin/termin/${other}`);
+  await expect(page.locator("main table")).toContainText("Bez");
 });

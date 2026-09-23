@@ -1,3 +1,4 @@
+import { fullName } from "@/lib/names";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -166,7 +167,7 @@ export default async function AdminSessionPage({
               <tbody>
                 {confirmed.map((r) => (
                   <tr key={r.id} className="border-b border-border last:border-0">
-                    <td className="p-3 whitespace-nowrap">{r.firstName} {r.lastName}</td>
+                    <td className="p-3 whitespace-nowrap">{fullName(r) ?? <span className="text-muted">–</span>}</td>
                     <td className="p-3 whitespace-nowrap">{r.nickname}<Flags r={r} t={t} /></td>
                     <td className="p-3 whitespace-nowrap"><a href={`mailto:${r.email}`} className="hover:underline">{r.email}</a></td>
                     <td className="p-3 whitespace-nowrap">{r.phone ? <a href={`tel:${r.phone}`} className="hover:underline">{r.phone}</a> : <span className="text-muted">–</span>}</td>
@@ -232,7 +233,7 @@ export default async function AdminSessionPage({
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
                 <span>
                   <span className="mr-2 font-semibold text-muted">{i + 1}.</span>
-                  {r.firstName} {r.lastName} ({r.nickname}<Flags r={r} t={t} />) · {r.email}{r.phone && <> · {r.phone}</>}
+                  {fullName(r) ? `${fullName(r)} (${r.nickname}` : `(${r.nickname}`}<Flags r={r} t={t} />) · {r.email}{r.phone && <> · {r.phone}</>}
                 </span>
                 <span className="flex gap-2">
                   <a href={editUrl(r.editToken)} className="self-center text-muted hover:underline" target="_blank" rel="noreferrer">{t.link}</a>
@@ -256,7 +257,7 @@ export default async function AdminSessionPage({
             {cancelled.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
                 <span className="text-muted">
-                  {r.firstName} {r.lastName} ({r.nickname}) · {r.email}
+                  {fullName(r) ? `${fullName(r)} (${r.nickname})` : r.nickname} · {r.email}
                   {r.cancelledAt && <> · {t.cancelledAt} {formatDate(r.cancelledAt, locale)} {formatTime(r.cancelledAt, locale)}</>}
                   {r.cancelReason && <> · {t.cancelReason}: „{r.cancelReason}“</>}
                 </span>
