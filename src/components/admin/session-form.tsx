@@ -63,7 +63,7 @@ export function SessionForm({
           ))}
         </select>
       </Field>
-      <Checkbox name="phoneRequired" label={t.phoneRequired} hint={t.phoneRequiredHint} defaultChecked={session?.phoneRequired ?? false} />
+      <Checkbox name="phoneRequired" label={t.phoneRequired} hint={t.phoneRequiredHint} defaultChecked={session?.phoneRequired ?? true} />
       <Field label={t.storyteller} name="storyteller" errors={fe.storyteller} hint={t.storytellerHint}>
         <input id="storyteller" name="storyteller" maxLength={200} defaultValue={session?.storyteller ?? ""} className={inputClass} placeholder="🎩 Honza" />
       </Field>

@@ -34,7 +34,7 @@ export const sessions = pgTable("sessions", {
   /** "times" = players pick arrival/departure times; "late" = a single "I'll come later" checkbox (small groups) */
   arrivalMode: text("arrival_mode", { enum: arrivalModes }).notNull().default("times"),
   /** Whether the registration form insists on a phone number */
-  phoneRequired: boolean("phone_required").notNull().default(false),
+  phoneRequired: boolean("phone_required").notNull().default(true),
   /** Links to scripts played that evening (botcscripts.com, script tool, PDF on a drive, …) */
   scripts: jsonb("scripts").$type<ScriptLink[]>().notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true })
